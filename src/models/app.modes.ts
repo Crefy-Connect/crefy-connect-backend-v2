@@ -28,8 +28,6 @@ const AppSchema = new Schema<IApp>({
     appId: {
         type: String,
         required: true,
-        unique: true,
-        index: true,
         default: function () {
             return generateAppId(); // Generate default value
         },

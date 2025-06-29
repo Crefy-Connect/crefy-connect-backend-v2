@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch server.ts",
-    "start": "node dest/server.js",
-    "build": "pnpm exec tsc",
+    "start": "node dest/app.js",
+    "build": "pnpm exec tsc ",
     "test": "echo \"Error: no test specified\" && exit 1",
     "deploy": "pm2 start dest/server.js --name crefy-connect-backend-v2 --instances 1"
   },

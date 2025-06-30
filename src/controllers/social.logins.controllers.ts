@@ -89,12 +89,6 @@ class SocialLoginsController {
             return res.status(201).json({
                 success: true,
                 message: 'OTP sent to email for verification',
-                data: {
-                    walletAddress: address,
-                    publicKey,
-                    socialType: 'email',
-                    userData: JSON.stringify({ email }),
-                }
             });
         } catch (error) {
             logger.error(`Error in emailLogin: ${error}`);
@@ -160,12 +154,7 @@ class SocialLoginsController {
 
             return res.status(200).json({
                 success: true,
-                message: 'Wallet verified successfully',
-                data: {
-                    walletAddress: wallet.address,
-                    publicKey: wallet.publicKey,
-                    socialType: wallet.socialType,
-                }
+                message: 'Wallet verified successfully'
             });
         } catch (error) {
             logger.error(`Error in walletVerify: ${error}`);
@@ -202,12 +191,6 @@ class SocialLoginsController {
             return res.status(200).json({
                 success: true,
                 message: 'OTP resent to email for verification',
-                data: {
-                    walletAddress: wallet.address,
-                    publicKey: wallet.publicKey,
-                    socialType: wallet.socialType,
-                    userData: JSON.stringify({ email }),
-                }
             });
         } catch (error) {
             logger.error(`Error in resendEmailOTP: ${error}`);

@@ -8,7 +8,7 @@
     "start": "node dest/server.js",
     "build": "pnpm exec tsc ",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "deploy": "pm2 start dest/server.js --name crefy-connect-backend-v2 --instances 1"
+    "deploy": "pm2 start dest/server.js --name api.crefy-connect-v2.crefy.xyz --instances 1"
   },
   "keywords": [],
   "author": "",

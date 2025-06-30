@@ -1,6 +1,6 @@
 import { Router, RequestHandler, Request, Response, NextFunction } from 'express';
 import SocialLoginsController from '../controllers/social.logins.controllers.js';
-import { validateAppIdMiddleware, handleGoogleAuthSession } from '../middlewares/auth.middleware.js';
+import { validateAppIdMiddleware, handleGoogleAuthSession, checkNotAuthenticated } from '../middlewares/auth.middleware.js';
 import passport from 'passport';
 import { ResponseHandler } from '../utils/response.handler.js';
 
@@ -12,6 +12,7 @@ const router = Router();
 router.post(
     '/email/:appId/email-login',
     validateAppIdMiddleware as RequestHandler,
+    checkNotAuthenticated as RequestHandler,
     SocialLoginsController.emailWalletLogin as unknown as RequestHandler
 );
 

@@ -7,7 +7,10 @@ import { Developer } from "../models/developer.models.js";
 import { App } from "../models/app.modes.js";
 import validationResult from "express-validator";
 import { ApiError } from "../utils/apiError.js";
-import { isJwtError, validateAppId } from "../utils/auth.js";
+import { isJwtError } from "../utils/auth.js";
+import { Wallet } from "../models/wallet.models.js";
+
+
 
 // Extend Express Request type
 declare global {
@@ -205,5 +208,30 @@ export const verifyGoogleAuthSession = async (req: Request, res: Response, next:
     } catch (error) {
         console.error('Error verifying Google auth session:', error);
         res.status(500).json({ error: 'Failed to verify authentication session' });
+    }
+};
+
+
+
+export const checkNotAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        // Check for JWT token in Authorization header
+        const token = req.header('Authorization')?.replace('Bearer ', '');
+
+        if (!token) {
+            return next(); // No token, proceed to route handler
+        }
+
+        // Verify token
+        const decoded = verifyJWT(token);
+        const wallet = await Wallet.findOne({ address: decoded.walletAddress, isActive: true });
+
+        if (wallet) {
+            throw new ApiError(403, "You are already logged in");
+        }
+
+        next();
+    } catch (error) {
+        next(); // If token is invalid, proceed to route handler
     }
 };

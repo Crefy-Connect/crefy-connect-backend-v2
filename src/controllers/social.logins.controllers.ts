@@ -2,11 +2,12 @@ import { Request, Response } from "express";
 import { Wallet } from "../models/wallet.models.js";
 import WalletGenerationService from "../services/wallet.generate.services.js";
 import logger from "../utils/logger.js";
-import { generateOTP, expireOTP, validateEmail } from "../utils/auth.js";
+import { generateOTP, expireOTP, validateEmail, generateJWT, verifyJWT } from "../utils/auth.js";
 import EmailService from "../services/email.service.js";
 import crypto from 'crypto';
 import passport from "passport";
 import { server_config } from "../config/index.js";
+import { ApiError } from "../utils/apiError.js";
 
 interface IWallet {
     email: string;
@@ -19,7 +20,9 @@ interface IWallet {
     otp?: string;
     otpExpiry?: Date;
     isActive: boolean;
+    socialType: string;
 }
+
 
 class SocialLoginsController {
 
@@ -34,6 +37,7 @@ class SocialLoginsController {
         try {
             const appId = req.params.appId;
             const { email } = req.body;
+            const token = req.header('Authorization')?.replace('Bearer ', '');
 
             if (!validateEmail(email)) {
                 return res.status(400).json({
@@ -45,23 +49,54 @@ class SocialLoginsController {
             // Check for existing wallet
             const existingWallet = await Wallet.findOne({ email, socialType: 'email' });
 
+            // If token is provided and valid, check if it matches the wallet
+            if (token) {
+                try {
+                    const decoded = verifyJWT(token);
+                    if (existingWallet && existingWallet.address === decoded.walletAddress && existingWallet.isActive) {
+                        // User is already authenticated
+                        return res.status(200).json({
+                            success: true,
+                            message: 'User already logged in',
+                            data: {
+                                walletAddress: existingWallet.address,
+                                publicKey: existingWallet.publicKey,
+                                socialType: existingWallet.socialType,
+                                userData: existingWallet.userData,
+                            },
+                            isActive: true,
+                            token: token,
+                        });
+                    }
+                } catch (error) {
+                    // Token is invalid, proceed with normal login flow
+                    logger.info('Invalid token provided, proceeding with OTP verification');
+                }
+            }
+
+            const otp = generateOTP();
+            const otpExpiry = expireOTP(otp);
+
             if (existingWallet) {
+                // Update OTP for existing wallet
+                existingWallet.otp = otp.toString();
+                existingWallet.otpExpiry = otpExpiry;
+                await existingWallet.save();
+
+                // Send OTP email
+                await EmailService.sendOTPEmail("User", email, otp.toString());
+
                 return res.status(200).json({
                     success: true,
-                    message: 'Wallet already exists',
-                    data: {
-                        walletAddress: existingWallet.address,
-                        publicKey: existingWallet.publicKey,
-                        socialType: existingWallet.socialType,
-                    }
+                    message: 'OTP sent to email for verification',
+                    isActive: existingWallet.isActive,
+                    walletExists: true
                 });
             }
 
-            // Generate new wallet  
-            const { address, privateKey, publicKey, mnemonic } = await WalletGenerationService.generateAddress();
-            logger.info(`Generated wallet: ${address}, ${publicKey}, ${privateKey}, ${mnemonic}`);
-            const otp = generateOTP();
-            const otpExpiry = expireOTP(otp);
+            // Generate new wallet for new user
+            const { address, privateKey, publicKey } = await WalletGenerationService.generateAddress();
+            logger.info(`Generated wallet: ${address}, ${publicKey}, ${privateKey}`);
             const encryptionSalt = crypto.randomBytes(16).toString('hex');
 
             // Create new wallet
@@ -75,11 +110,11 @@ class SocialLoginsController {
                 encryptionSalt,
                 userData: JSON.stringify({ email }),
                 isActive: false,
-                otp,
+                otp: otp.toString(),
                 otpExpiry,
             });
 
-            newWallet.save();
+            await newWallet.save();
 
             // Send OTP email
             await EmailService.sendOTPEmail("User", email, otp.toString());
@@ -89,6 +124,8 @@ class SocialLoginsController {
             return res.status(201).json({
                 success: true,
                 message: 'OTP sent to email for verification',
+                isActive: false,
+                walletExists: false
             });
         } catch (error) {
             logger.error(`Error in emailLogin: ${error}`);
@@ -107,57 +144,71 @@ class SocialLoginsController {
             const { email, otp } = req.body;
             logger.info(`Wallet verify request received: ${email}, ${otp}`);
             if (!validateEmail(email)) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Valid email is required'
-                });
+                throw new ApiError(400, 'Valid email is required');
             }
 
             const wallet = await Wallet.findOne({ email, socialType: 'email' });
-            logger.info(`Wallet found: ${wallet}`);
             if (!wallet) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Wallet not found'
-                });
+                throw new ApiError(404, 'Wallet not found');
             }
 
-            // check if wallet is already verified
-            if (wallet.isActive) {
-                return res.status(200).json({
-                    success: true,
-                    message: 'Wallet already verified',
-                    data: {
-                        walletAddress: wallet.address,
-                        publicKey: wallet.publicKey,
-                        socialType: wallet.socialType,
+            // check if wallet is already verified and has a valid token
+            const token = req.header('Authorization')?.replace('Bearer ', '');
+            if (token && wallet.isActive) {
+                try {
+                    const decoded = verifyJWT(token);
+                    if (wallet.address === decoded.walletAddress) {
+                        return res.status(200).json({
+                            success: true,
+                            message: 'User already logged in',
+                            data: {
+                                walletAddress: wallet.address,
+                                publicKey: wallet.publicKey,
+                                socialType: wallet.socialType,
+                                userData: wallet.userData,
+                            },
+                            isActive: true,
+                            token: token,
+                        });
                     }
-                });
+                } catch (error) {
+                    // Token is invalid, proceed with OTP verification
+                }
             }
 
             if (wallet.otp !== otp) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Invalid OTP'
-                });
+                throw new ApiError(400, 'Invalid OTP');
             }
 
             if (wallet.otpExpiry && wallet.otpExpiry < new Date()) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'OTP expired'
-                });
+                throw new ApiError(400, 'OTP expired');
             }
 
             wallet.isActive = true;
             await wallet.save();
 
+            const newToken = generateJWT({ walletAddress: wallet.address });
+
             return res.status(200).json({
                 success: true,
-                message: 'Wallet verified successfully'
+                message: 'Wallet verified successfully',
+                data: {
+                    walletAddress: wallet.address,
+                    publicKey: wallet.publicKey,
+                    socialType: wallet.socialType,
+                    userData: wallet.userData,
+                },
+                isActive: true,
+                token: newToken,
             });
         } catch (error) {
             logger.error(`Error in walletVerify: ${error}`);
+            if (error instanceof ApiError) {
+                return res.status(error.statusCode).json({
+                    success: false,
+                    message: error.message
+                });
+            }
             return res.status(500).json({
                 success: false,
                 message: "Internal server error"
@@ -173,10 +224,7 @@ class SocialLoginsController {
             const { email } = req.body;
             const wallet = await Wallet.findOne({ email, socialType: 'email' });
             if (!wallet) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Wallet not found'
-                });
+                throw new ApiError(404, 'Wallet not found');
             }
 
             const otp = generateOTP();
@@ -194,12 +242,19 @@ class SocialLoginsController {
             });
         } catch (error) {
             logger.error(`Error in resendEmailOTP: ${error}`);
+            if (error instanceof ApiError) {
+                return res.status(error.statusCode).json({
+                    success: false,
+                    message: error.message
+                });
+            }
             return res.status(500).json({
                 success: false,
                 message: "Internal server error"
             });
         }
     }
+
 
     /**
      * Google OAuth Callback

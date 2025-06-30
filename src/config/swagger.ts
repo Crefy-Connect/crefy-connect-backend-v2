@@ -58,20 +58,6 @@ const baseDefinition = {
                     }
                 }
             },
-            ErrorResponse: {
-                type: 'object',
-                properties: {
-                    success: {
-                        type: 'boolean',
-                        example: false
-                    },
-                    message: {
-                        type: 'string',
-                        example: 'Error message'
-                    }
-                }
-            },
-            // Merge your social logins schemas
             ...socialLoginsSwagger.components?.schemas
         }
     },

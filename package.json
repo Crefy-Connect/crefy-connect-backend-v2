@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch server.ts",
     "start": "node dest/server.js",
+    "account-abstraction": "tsx src/utils/account-abstraction/biconomy-service.ts",
     "build": "pnpm exec tsc ",
     "test": "echo \"Error: no test specified\" && exit 1",
     "deploy": "pm2 start dest/server.js --name api.crefy-connect-v2.crefy.xyz --instances 1"
@@ -15,11 +16,17 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@biconomy/abstractjs": "^1.0.18",
+    "@biconomy/account": "^4.5.7",
+    "@biconomy/bundler": "^3.1.4",
+    "@biconomy/core-types": "^3.1.4",
+    "@biconomy/paymaster": "^3.1.4",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.0",
     "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
+    "ethers": "^6.14.4",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.1",
     "express-session": "^1.18.1",

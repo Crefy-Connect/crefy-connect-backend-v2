@@ -54,7 +54,7 @@ const googleOAuthStrategy = new GoogleStrategy(
                     publicKey,
                     encryptedPrivateKey: privateKey,
                     encryptionSalt,
-                    userData: profile,
+                    userData: JSON.stringify(profile),
                     isActive: true
                 }], { session: transaction });
 

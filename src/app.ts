@@ -128,25 +128,26 @@ class App {
         }));
 
         // CORS
-        this.app.use(cors({
-            origin: [...server_config.corsOrigins, 'https://cdn.jsdelivr.net'],
-            credentials: true,
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
-        }));
+        // this.app.use(cors({
+        //     origin: [...server_config.corsOrigins, 'https://cdn.jsdelivr.net'],
+        //     credentials: true,
+        //     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+        //     allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key']
+        // }));
+        this.app.use(cors())
 
         // Rate limiting
-        const limiter = rateLimit({
-            windowMs: 15 * 60 * 1000,
-            max: 100,
-            message: 'Too many requests from this IP, please try again later',
-            standardHeaders: true,  // Enable standard rate limit headers
-            legacyHeaders: false,  // Disable legacy headers
-            validate: {
-                trustProxy: false  // Explicitly set based on your environment
-            }
-        });
-        this.app.use(limiter);
+        // const limiter = rateLimit({
+        //     windowMs: 15 * 60 * 1000,
+        //     max: 100,
+        //     message: 'Too many requests from this IP, please try again later',
+        //     standardHeaders: true,  // Enable standard rate limit headers
+        //     legacyHeaders: false,  // Disable legacy headers
+        //     validate: {
+        //         trustProxy: false  // Explicitly set based on your environment
+        //     }
+        // });
+        // this.app.use(limiter);
 
         // Custom request logging (add this before other middlewares)
         this.initializeRequestLogging();

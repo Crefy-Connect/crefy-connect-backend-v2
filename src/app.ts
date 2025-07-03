@@ -246,7 +246,7 @@ class App {
         });
 
         // Serve Swagger UI
-        this.app.use('/api-docs',
+        this.app.use('/private/0to1/api-docs',
             swaggerUi.serve,
             swaggerUi.setup(swaggerSpec, {
                 customSiteTitle: "Crefy Connect API",
@@ -260,13 +260,13 @@ class App {
         );
 
         // JSON spec endpoint with CORS headers
-        this.app.get('/api-docs.json', (req, res) => {
+        this.app.get('/private/0to1/api-docs.json', (req, res) => {
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Content-Type', 'application/json');
             res.send(swaggerSpec);
         });
 
-        logger.info(`Swagger docs available at ${server_config.baseUrl}/api-docs`);
+        logger.info(`Swagger docs available at ${server_config.baseUrl}/private/0to1/api-docs`);
     }
 
     /**

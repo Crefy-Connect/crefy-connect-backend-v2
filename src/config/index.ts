@@ -129,7 +129,7 @@ export const logger_config: LoggerConfig = {
 
 export const jwt_config: JWTConfig = {
     secret: process.env.JWT_SECRET || 'your-secret-key',
-    expiresIn: process.env.JWT_EXPIRATION || '1h'
+    expiresIn: process.env.JWT_EXPIRATION || '1d'
 };
 
 // Configuration validation function

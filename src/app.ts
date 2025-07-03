@@ -16,6 +16,13 @@ import swaggerSpec from './config/swagger.js';
 import logger from './utils/logger.js';
 import apiRouter from './routes/index.routes.js';
 import { passportInit, passportSession } from './config/passport.config.js';
+import SocketManager from './services/socket.manager.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import ejs from 'ejs';  // Add this import
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 /**
@@ -192,6 +199,10 @@ class App {
         this.app.get('/success', (req: express.Request, res: express.Response) => {
             res.send('Successfully logged in and created a wallet');
         });
+        this.app.set('view engine', 'html');
+        this.app.engine('html', ejs.renderFile);
+        this.app.set('views', path.join(__dirname, 'views'));
+
     }
 
     /**
@@ -227,7 +238,7 @@ class App {
      */
     private initializeSwagger(): void {
         // Enable CORS for Swagger endpoints
-        this.app.use('/api-docs', (req, res, next) => {
+        this.app.use('/private/0to1/api-docs', (req, res, next) => {
             res.setHeader('Access-Control-Allow-Origin', '*');
             res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
             res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -291,13 +302,9 @@ class App {
      * @returns void
      */
     private initializeSocketIO(): void {
-        this.io.on('connection', (socket) => {
-            logger.info(`Socket connected: ${socket.id}`);
-
-            socket.on('disconnect', () => {
-                logger.info(`Socket disconnected: ${socket.id}`);
-            });
-        });
+        // Initialize the SocketManager with our io instance
+        const socketManager = SocketManager.getInstance();
+        socketManager.initialize(this.io);
     }
 
 

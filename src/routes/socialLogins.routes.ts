@@ -3,6 +3,7 @@ import SocialLoginsController from '../controllers/social.logins.controllers.js'
 import { validateAppIdMiddleware, handleGoogleAuthSession, checkNotAuthenticated } from '../middlewares/auth.middleware.js';
 import passport from 'passport';
 import { ResponseHandler } from '../utils/response.handler.js';
+import SocketManager from '../services/socket.manager.js';
 
 const router = Router();
 
@@ -54,6 +55,31 @@ router.get('/google/callback',
             const wallet = req.user as any;
             const sessionId = req.query.state as string;
 
+            // Socket.io emission remains the same
+            const socketManager = SocketManager.getInstance();
+            socketManager.emitToSession(sessionId, 'google-auth-success', {
+                message: 'Google authentication successful',
+                wallet: {
+                    address: wallet.address,
+                    email: wallet.email,
+                    publicKey: wallet.publicKey
+                },
+                sessionId
+            });
+
+            // Render HTML for browser requests
+            if (req.accepts('html')) {
+                return res.render('google-success', {
+                    wallet: {
+                        address: wallet.address,
+                        email: wallet.email,
+                        publicKey: wallet.publicKey
+                    },
+                    sessionId
+                });
+            }
+
+            // Keep JSON response for API clients
             ResponseHandler.success(res, {
                 message: 'Google authentication successful',
                 wallet: {
@@ -64,7 +90,7 @@ router.get('/google/callback',
                 sessionId
             });
         } catch (error) {
-            next(error); // Proper error handling
+            next(error);
         }
     }
 );

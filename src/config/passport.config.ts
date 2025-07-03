@@ -37,7 +37,7 @@ const googleOAuthStrategy = new GoogleStrategy(
             const appId = req.params.appId || req.query.appId || 'default';
             const sessionId = req.query.state as string;
 
-            logger.info(`Google OAuth for email: ${email}, appId: ${appId}`);
+            logger.info(`Google OAuth for email: ${email}, appId: ${appId}, sessionId: ${sessionId}`);
 
             // Find or create wallet
             let wallet: any = await Wallet.findOne({ email, socialType: 'google' }).session(transaction);

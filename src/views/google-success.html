@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Successful</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        .success-container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .success-icon {
+            color: #34A853;
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        h1 {
+            margin: 0 0 1rem 0;
+            color: #2d3748;
+        }
+
+        p {
+            margin: 0.5rem 0;
+            color: #4a5568;
+        }
+
+        .wallet-info {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.5rem 0;
+            text-align: left;
+        }
+
+        .info-item {
+            margin: 0.5rem 0;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .close-btn {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: background-color 0.3s;
+        }
+
+        .close-btn:hover {
+            background-color: #3367D6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="success-container">
+        <div class="success-icon">✓</div>
+        <h1>Authentication Successful</h1>
+        <p>You have successfully authenticated with Google.</p>
+
+        <div class="wallet-info">
+            <div class="info-item">
+                <span class="info-label">Wallet Address:</span>
+                <span id="wallet-address">{{wallet.address}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Email:</span>
+                <span id="wallet-email">{{wallet.email}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Public Key:</span>
+                <span id="wallet-public-key">{{wallet.publicKey}}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Session ID:</span>
+                <span id="session-id">{{sessionId}}</span>
+            </div>
+        </div>
+
+        <p>You can now close this window and return to the application.</p>
+        <button class="close-btn" onclick="window.close()">Close Window</button>
+    </div>
+
+    <script>
+        // Parse the URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const walletData = urlParams.get('wallet');
+        const sessionId = urlParams.get('sessionId');
+
+        if (walletData) {
+            try {
+                const wallet = JSON.parse(decodeURIComponent(walletData));
+
+                // Update the DOM with wallet information
+                document.getElementById('wallet-address').textContent = wallet.address;
+                document.getElementById('wallet-email').textContent = wallet.email;
+                document.getElementById('wallet-public-key').textContent = wallet.publicKey;
+                document.getElementById('session-id').textContent = sessionId;
+            } catch (e) {
+                console.error('Error parsing wallet data:', e);
+            }
+        }
+    </script>
+</body>
+
+</html>

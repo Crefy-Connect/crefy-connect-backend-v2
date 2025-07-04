@@ -2,8 +2,14 @@ import { Request, Response } from "express";
 import { AccountAbstractionService } from "../web3/account-abstraction.js";
 import logger from "../utils/logger.js";
 import { Wallet } from "../models/wallet.models.js";
-import { Chain, baseSepolia, scrollSepolia } from "viem/chains";
+import { Chain, baseSepolia, scrollSepolia, avalancheFuji, base } from "viem/chains";
 
+const supportedChain = [
+    { name: "avalancheFuji", chain: avalancheFuji },
+    { name: "baseSepolia", chain: baseSepolia },
+    { name: "scrollSepolia", chain: scrollSepolia },
+    { name: "base", chain: base }
+]
 
 export class CryptoTransactionController {
     /**
@@ -14,14 +20,12 @@ export class CryptoTransactionController {
     private async initializeAA(walletId: string, chain: string): Promise<AccountAbstractionService> {
         try {
             let chainObj: Chain;
-            if (chain === "baseSepolia") {
-                chainObj = baseSepolia;
-            } else if (chain === "scrollSepolia") {
-                logger.info("Scroll Sepolia");
-                chainObj = scrollSepolia;
-            } else {
-                throw new Error("Invalid chain");
+            console.log(chain);
+            chainObj = supportedChain.find(c => c.name === chain)?.chain as Chain;
+            if (!chainObj) {
+                throw new Error(`Invalid chain: ${chain}`);
             }
+
             // Find wallet by email or Id
             const wallet = await Wallet.findOne({
                 $or: [{ email: walletId }, { _id: walletId }]
@@ -50,8 +54,10 @@ export class CryptoTransactionController {
      */
     public async sendETH(req: Request, res: Response) {
         try {
-            const { walletId } = (req as any).wallet;
+            const { _id: walletId } = (req as any).wallet;
             const { to, value, chain } = req.body;
+            logger.info(`Wallet ID: ${walletId}`);
+            logger.info(`Sending ETH to ${to} with value ${value} on chain ${chain}`);
 
             if (!to || !value || !chain) {
                 return res.status(400).json({
@@ -61,7 +67,8 @@ export class CryptoTransactionController {
             }
 
             const aaService = await this.initializeAA(walletId, chain);
-            const result = await aaService.sendETH(to, value || '0');
+            const result = await aaService.sendETH(to, value || '0', 'SPONSORED');
+            console.log(result);
 
             if (result.error) {
                 return res.status(500).json({
@@ -72,10 +79,15 @@ export class CryptoTransactionController {
 
             return res.status(200).json({
                 success: true,
-                fromAddress: result.address,
+                fromAddress: result.address?.toString(),
                 toAddress: to,
-                transactionHash: result.hash,
-                receipt: result.receipt
+                transactionHash: result.hash?.toString(),
+                receipt: {
+                    blockHash: result.receipt?.blockHash?.toString(),
+                    gasUsed: result.receipt?.gasUsed?.toString(),
+                    status: result.receipt?.status,
+                    type: result.receipt?.type
+                }
             });
         } catch (error: any) {
             logger.error(`Error in sendETH: ${error.message}`);
@@ -140,13 +152,17 @@ export class CryptoTransactionController {
             const aaService = await this.initializeAA(walletId, "baseSepolia");
             const currentAddress = await aaService.getAccountAddress();
 
+            const balance = await aaService.getAccountBalance();
+            console.log(balance);
+
             return res.status(200).json({
                 success: true,
                 walletId: wallet._id,
                 walletEmail: wallet.email,
                 socialType: wallet.socialType,
-                registeredAddress: wallet.address,
-                currentAddress,
+                smartWalletAddress: wallet.address,
+                socialWalletAddress: currentAddress,
+                balance: Number(balance),
                 isActive: wallet.isActive,
                 createdAt: wallet.createdAt,
                 updatedAt: wallet.updatedAt

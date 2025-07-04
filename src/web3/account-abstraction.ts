@@ -12,7 +12,9 @@ import {
 import {
     Chain,
     baseSepolia,
-    scrollSepolia
+    scrollSepolia,
+    avalancheFuji,
+    base
 } from "viem/chains";
 import {
     erc20Abi,
@@ -70,14 +72,26 @@ const SUPPORTED_CHAINS_CONFIG = {
     [baseSepolia.id]: {
         bundlerUrl: process.env.BASE_SEPOLIA_BUNDLER_URL,
         paymasterUrl: process.env.BASE_SEPOLIA_PAYMASTER_URL,
-        factoryAddress: "0x000000001D1D5004a02bAfAb9de2D6CE5b7B13de",
+        factoryAddress: "0x000000001D1D5004a02bAfAb9de2D6CE5b7B13de", // Base Sepolia
         requiresDeployment: true
     },
     [scrollSepolia.id]: {
         bundlerUrl: process.env.SCROLL_SEPOLIA_BUNDLER_URL,
         paymasterUrl: process.env.SCROLL_SEPOLIA_PAYMASTER_URL,
-        factoryAddress: "0x0000000071727De22E5E9d8BAf0edAc6f37da032", // Different factory for Scroll
-        requiresDeployment: false // Scroll may not require deployment
+        factoryAddress: "0x0000000071727De22E5E9d8BAf0edAc6f37da032", // Scroll Sepolia
+        requiresDeployment: false
+    },
+    [avalancheFuji.id]: {
+        bundlerUrl: process.env.AVALANCHE_FUJI_BUNDLER_URL,
+        paymasterUrl: process.env.AVALANCHE_FUJI_PAYMASTER_URL,
+        factoryAddress: "0x000000001D1D5004a02bAfAb9de2D6CE5b7B13de", // Avalanche Fuji
+        requiresDeployment: false
+    },
+    [base.id]: {
+        bundlerUrl: process.env.BASE_BUNDLER_URL,
+        paymasterUrl: process.env.BASE_PAYMASTER_URL,
+        factoryAddress: "0x000000001D1D5004a02bAfAb9de2D6CE5b7B13de", // Base Mainnet
+        requiresDeployment: false
     }
 };
 
@@ -113,6 +127,7 @@ export class AccountAbstractionService {
 
         this.privateKey = this.formatPrivateKey(privateKey);
         this.account = privateKeyToAccount(this.privateKey);
+        console.log(this.account);
         this.chain = chain;
         this.paymasterUrl = chainConfig.paymasterUrl;
         this.bundlerUrl = chainConfig.bundlerUrl;
@@ -137,8 +152,8 @@ export class AccountAbstractionService {
     }
 
     public async getAccountBalance(): Promise<string> {
-        this.client = await this.createClient();
-        return this.client.account.balance;
+        const address = this.account.address;
+        return this.publicClient.getBalance({ address: address as `0x${string}` });
     }
 
     private async getGasFees() {
@@ -463,17 +478,6 @@ export class AccountAbstractionService {
         const address = await this.client.account.address;
 
         try {
-            // Only attempt deployment if required by chain
-            // if (this.requiresDeployment) {
-            //     await this.handleAccountDeployment();
-            // }
-
-            // // For Scroll Sepolia, try fee-paid mode first if paymaster fails
-            // if (this.chain.id === scrollSepolia.id) {
-            //     return this.sendTransactionWithFallback(params);
-            // }
-
-
             let calls: any[] = [];
 
             if (params.contractCall) {
@@ -486,13 +490,15 @@ export class AccountAbstractionService {
                         functionName,
                         args,
                     }),
-                    value: parseEther(value)
+                    value: BigInt(value) // Convert value to BigInt directly
                 });
             } else if (params.to) {
                 logger.info('Handling simple ETH transfer');
+                // Ensure value is properly formatted
+                const txValue = params.value ? BigInt(params.value) : 0n;
                 calls.push({
                     to: params.to as `0x${string}`,
-                    value: parseEther(params.value || '0'),
+                    value: txValue,
                     data: params.data as `0x${string}` || undefined,
                 });
             }
@@ -525,6 +531,7 @@ export class AccountAbstractionService {
 
             logger.info(`Transaction hash: ${hash}`);
             const receipt = await this.client.waitForTransactionReceipt({ hash });
+            logger.info(`Transaction receipt: ${receipt}`);
 
             return {
                 address,
@@ -544,9 +551,10 @@ export class AccountAbstractionService {
     }
 
     public async sendETH(to: string, value: string = '0', mode?: 'SPONSORED' | 'FEE'): Promise<TransactionResult> {
+        const valueInWei = parseEther(value);
         return this.sendTransaction({
-            to,
-            value,
+            to: to as `0x${string}`,
+            value: valueInWei.toString(), // Convert back to string for consistency
             mode
         });
     }

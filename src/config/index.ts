@@ -151,5 +151,17 @@ export function validateConfig() {
     }
 }
 
+export const elementpay_config = {
+    apiKey: process.env.ELEMENTPAY_API_KEY,
+    baseUrl: process.env.ELEMENTPAY_BASE_URL,
+    rpcUrl: process.env.BASE_RPC_URL,
+};
+
+export const twilio_config = {
+    accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+    authToken: process.env.TWILIO_AUTH_TOKEN || '',
+    phoneNumber: process.env.TWILIO_PHONE_NUMBER || '',
+};
+
 // Validate configuration on startup
 validateConfig();

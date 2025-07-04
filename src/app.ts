@@ -20,6 +20,7 @@ import SocketManager from './services/socket.manager.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import ejs from 'ejs';  // Add this import
+// import runTests from './elementtpay.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -202,7 +203,6 @@ class App {
         this.app.set('view engine', 'html');
         this.app.engine('html', ejs.renderFile);
         this.app.set('views', path.join(__dirname, 'views'));
-
     }
 
     /**
@@ -217,6 +217,7 @@ class App {
                 w: mongodb_config.w
             });
             logger.info('Connected to MongoDB');
+            // runTests();
         } catch (error) {
             logger.error('Failed to connect to MongoDB', error);
             process.exit(1);
@@ -307,7 +308,6 @@ class App {
         socketManager.initialize(this.io);
     }
 
-
     /**
      * Listen
      * @description This function listens to the server
@@ -324,6 +324,7 @@ http://${server_config.baseUrl}/api-docs -- swagger docs
             `);
         });
     }
+
 }
 
 export default App;

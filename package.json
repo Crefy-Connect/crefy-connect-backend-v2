@@ -21,6 +21,7 @@
     "@biconomy/bundler": "^3.1.4",
     "@biconomy/core-types": "^3.1.4",
     "@biconomy/paymaster": "^3.1.4",
+    "axios": "^1.10.0",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.0",
     "connect-mongo": "^5.1.0",

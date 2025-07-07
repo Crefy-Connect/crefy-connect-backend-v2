@@ -17,5 +17,6 @@ router.post('/send-erc20', checkWalletAuthenticated as RequestHandler, controlle
 router.get('/wallet-info', checkWalletAuthenticated as RequestHandler, controller.getWalletInfo.bind(controller));
 // @ts-ignore
 router.post('/execute-contract', checkWalletAuthenticated as RequestHandler, controller.executeContractFunction.bind(controller));
-
+// @ts-ignore
+router.get('/supported-chains', controller.getSupportedChains.bind(controller));
 export default router;

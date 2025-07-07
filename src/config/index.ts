@@ -158,9 +158,15 @@ export const elementpay_config = {
 };
 
 export const twilio_config = {
-    accountSid: process.env.TWILIO_ACCOUNT_SID || '',
-    authToken: process.env.TWILIO_AUTH_TOKEN || '',
-    phoneNumber: process.env.TWILIO_PHONE_NUMBER || '',
+    TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || '',
+    TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || '',
+    TWILIO_PHONE_NUMBER: process.env.TWILIO_PHONE_NUMBER || '',
+};
+
+export const africas_talking_config = {
+    AFRICAS_TALKING_API_KEY: process.env.AFRICAS_TALKING_API_KEY || '',
+    AFRICAS_TALKING_USERNAME: process.env.AFRICAS_TALKING_USERNAME || '',
+    AFRICAS_TALKING_SENDER_ID: process.env.AFRICAS_TALKING_SENDER_ID || '',
 };
 
 // Validate configuration on startup

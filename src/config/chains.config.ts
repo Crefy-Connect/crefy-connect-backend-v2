@@ -59,23 +59,6 @@ export const SUPPORTED_CHAINS: ExtendedChain[] = [
         logo: "https://cryptologos.cc/logos/avalanche-avax-logo.png",
         faucetUrl: "https://faucet.avax.network/",
         bridgeUrl: "https://bridge.avax.network/"
-    },
-    {
-        ...mainnet,
-        isTestnet: false,
-        logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png"
-    },
-    {
-        ...polygon,
-        isTestnet: false,
-        logo: "https://cryptologos.cc/logos/polygon-matic-logo.png",
-        bridgeUrl: "https://wallet.polygon.technology/polygon/bridge"
-    },
-    {
-        ...bsc,
-        isTestnet: false,
-        logo: "https://cryptologos.cc/logos/bnb-bnb-logo.png",
-        bridgeUrl: "https://www.bnbchain.org/en/bridge"
     }
 ]
 

@@ -212,7 +212,11 @@ export class CryptoTransactionController {
             }
 
             // Get balances and info for all supported chains
+            const aaa = await this.initializeAA(walletId, 'Base Sepolia')
+            const accountInfomation = await aaa.getAccountInfo()
+
             const chainInfo = []
+
             for (const chain of ChainUtils.getAllSupportedChains()) {
                 try {
                     const aaService = await this.initializeAA(walletId, chain.name)
@@ -252,6 +256,8 @@ export class CryptoTransactionController {
                 walletEmail: wallet.email,
                 socialType: wallet.socialType,
                 isActive: wallet.isActive,
+                walletAddress: accountInfomation.walletAddress,
+                smartAccountAddress: accountInfomation.smartAccountAddress,
                 chains: chainInfo,
                 createdAt: wallet.createdAt,
                 updatedAt: wallet.updatedAt,
@@ -313,7 +319,10 @@ export class CryptoTransactionController {
             )
 
             if (result.error) {
-                return ResponseHandler.error(res, result.error, 500)
+                if (result.error.message.includes('AA33 reverted')) {
+                    return ResponseHandler.error(res, 'Transaction rejected by paymaster', 417);
+                }
+                return ResponseHandler.error(res, result.error, 500);
             }
 
             const simplifiedReceipt = {

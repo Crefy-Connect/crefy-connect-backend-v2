@@ -51,7 +51,9 @@ interface TransactionParams {
 }
 
 interface AccountInfo {
-    address: string
+    address: string           // Smart account address (same as before)
+    walletAddress: string     // EOA address that controls the smart account
+    smartAccountAddress: string // Explicit smart account address (same as address but more clear)
     isDeployed: boolean
     balance: string
     version: AccountVersion
@@ -366,14 +368,16 @@ export class AccountAbstractionService {
      */
     public async getAccountInfo(): Promise<AccountInfo> {
         try {
-            const address = await this.getAccountAddress()
-            const isDeployed = await this.isAccountDeployed(address)
+            const smartAccountAddress = await this.getAccountAddress()
+            const isDeployed = await this.isAccountDeployed(smartAccountAddress)
             const balance = await this.getAccountBalance()
-            const version = await this.detectAccountVersion(address)
+            const version = await this.detectAccountVersion(smartAccountAddress)
             const supportedTokens = ChainUtils.getSupportedTokens(this.chain.id)
 
             return {
-                address,
+                address: smartAccountAddress, // Keep for backward compatibility
+                walletAddress: this.account.address, // The EOA that controls the smart account
+                smartAccountAddress, // Explicit smart account address
                 isDeployed,
                 balance,
                 version,
@@ -386,7 +390,6 @@ export class AccountAbstractionService {
             throw new Error(`Failed to get account info: ${error.message}`)
         }
     }
-
     /**
      * Estimate gas fees for transactions
      */
@@ -683,7 +686,12 @@ export class AccountAbstractionService {
                 })
             } catch (sponsoredError: any) {
                 if (params.mode !== "FEE" && this.shouldFallbackToFee(sponsoredError)) {
+                    console.log("sponsoredError", sponsoredError)
                     logger.warn("Sponsored transaction failed, attempting fee-paid transaction...")
+                    console.log('Gas fees in ETH', {
+                        maxFeePerGas: formatEther(maxFeePerGas),
+                        maxPriorityFeePerGas: formatEther(maxPriorityFeePerGas),
+                    })
                     hash = await client.sendTransaction({
                         calls,
                         maxFeePerGas,

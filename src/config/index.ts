@@ -169,5 +169,9 @@ export const africas_talking_config = {
     AFRICAS_TALKING_SENDER_ID: process.env.AFRICAS_TALKING_SENDER_ID || '',
 };
 
+export const contract_config = {
+    ENS_FACTORY_CONTRACT_ADDRESS: process.env.ENS_FACTORY_CONTRACT_ADDRESS || '',
+};
+
 // Validate configuration on startup
 validateConfig();

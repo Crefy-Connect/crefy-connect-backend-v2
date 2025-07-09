@@ -8,6 +8,8 @@ interface IDeveloper extends Document {
     isActive: boolean;
     otp: number;
     otpExpiresAt: Date;
+    passwordResetToken?: string;
+    passwordResetExpires?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -20,6 +22,8 @@ const DeveloperSchema = new Schema<IDeveloper>({
     isActive: { type: Boolean, default: false },
     otp: { type: Number, required: false },
     otpExpiresAt: { type: Date, required: false },
+    passwordResetToken: { type: String, required: false },
+    passwordResetExpires: { type: Date, required: false },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
 });

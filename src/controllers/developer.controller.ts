@@ -4,6 +4,7 @@ import { generateApiKey, generateOTP, expireOTP, hashPassword, comparePassword, 
 import logger from "../utils/logger.js";
 import { mongodb_config } from "../config/index.js";
 import EmailService from "../services/email.service.js";
+import { HttpStatus } from "../utils/httpStatus.js";
 
 class DeveloperController {
     /**
@@ -292,6 +293,168 @@ class DeveloperController {
     }
 
     /**
+     * Forgot password with enail by sending a link with verifi
+     */
+    public async forgotPassword(req: Request, res: Response) {
+        try {
+            const { email } = req.body;
+
+            // Find developer by email
+            if (!email) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    status: 'error',
+                    error: 'EMAIL_REQUIRED',
+                    message: 'Email address is required'
+                });
+            }
+
+            const developer = await Developer.findOne({ email });
+            if (!developer) {
+                return res.status(HttpStatus.NOT_FOUND).json({
+                    status: 'error',
+                    error: 'DEVELOPER_NOT_FOUND',
+                    message: 'Developer not found'
+                });
+            }
+
+            // Generate reset token (using JWT in this example)
+            const resetToken = generateJWT({ developerId: developer._id });
+            const resetExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day expiry
+            logger.info(`Reset expiry: c${resetExpiry}`, Date.now());
+
+            // Update developer with reset token and expiry
+            developer.passwordResetToken = resetToken;
+            developer.passwordResetExpires = resetExpiry;
+            await developer.save();
+
+            // Send reset email
+            const isEmailSent = await EmailService.sendPasswordResetEmail(developer.name, developer.email, resetToken);
+            if (!isEmailSent) {
+                return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                    status: 'error',
+                    error: 'EMAIL_SEND_FAILED',
+                    message: 'Failed to send password reset email'
+                });
+            }
+
+            return res.status(HttpStatus.OK).json({
+                status: 'success',
+                message: 'Password reset email sent successfully'
+            });
+        } catch (error: any) {
+            logger.error(`Error sending forgot password email: ${error}`);
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                status: 'error',
+                error: 'INTERNAL_SERVER_ERROR',
+                message: 'An error occurred while sending the forgot password email'
+            });
+        }
+    }
+
+
+    /**
+    * Verify password reset token
+    * @param req 
+    * @param res 
+    * @returns 
+    */
+    static async verifyResetToken(req: Request, res: Response) {
+        try {
+            const { token } = req.query;
+            const decodedToken = decodeURIComponent(token as string);
+
+            if (!token) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    status: 'error',
+                    error: 'TOKEN_REQUIRED',
+                    message: 'Reset token is required'
+                });
+            }
+
+            const developer = await Developer.findOne({ passwordResetToken: decodedToken });
+            if (!developer) {
+                return res.status(HttpStatus.UNAUTHORIZED).json({
+                    status: 'error',
+                    error: 'INVALID_TOKEN',
+                    message: 'Invalid or expired reset token'
+                });
+            }
+
+            res.status(HttpStatus.OK).json({
+                status: 'success',
+                message: 'Reset token is valid'
+            });
+        } catch (error: any) {
+            logger.error('Error in verifyResetToken:', error);
+            res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                status: 'error',
+                error: 'SERVER_ERROR',
+                message: 'An error occurred while verifying reset token'
+            });
+        }
+    }
+
+    /**
+     * Reset password using valid token
+     * @param req 
+     * @param res 
+     * @returns 
+     */
+    static async resetPassword(req: Request, res: Response) {
+        try {
+            const { token, newPassword } = req.body;
+            const decodedToken = decodeURIComponent(token as string);
+
+            if (!token || !newPassword) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    status: 'error',
+                    error: 'MISSING_FIELDS',
+                    message: 'Reset token and new password are required'
+                });
+            }
+
+            const developer = await Developer.findOne({ passwordResetToken: decodedToken });
+            if (!developer) {
+                return res.status(HttpStatus.UNAUTHORIZED).json({
+                    status: 'error',
+                    error: 'INVALID_TOKEN',
+                    message: 'Invalid or expired reset token'
+                });
+            }
+
+            // Check if reset token has expired
+            if (developer.passwordResetExpires && developer.passwordResetExpires < new Date()) {
+                return res.status(HttpStatus.UNAUTHORIZED).json({
+                    status: 'error',
+                    error: 'EXPIRED_TOKEN',
+                    message: 'Reset token has expired'
+                });
+            }
+
+            // Hash new password
+            const hashedPassword = hashPassword(newPassword);
+
+            // Update developer password
+            developer.password = hashedPassword;
+            developer.passwordResetToken = undefined;
+            developer.passwordResetExpires = undefined;
+            await developer.save();
+
+            return res.status(HttpStatus.OK).json({
+                status: 'success',
+                message: 'Password reset successfully'
+            });
+        } catch (error: any) {
+            logger.error('Error in resetPassword:', error);
+            res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                status: 'error',
+                error: 'SERVER_ERROR',
+                message: 'An error occurred while resetting password'
+            });
+        }
+    }
+
+    /**
      * Delete developer
      */
     public async deleteDeveloper(req: Request, res: Response): Promise<Response> {
@@ -327,4 +490,5 @@ class DeveloperController {
     }
 }
 
+export { DeveloperController };
 export default new DeveloperController();

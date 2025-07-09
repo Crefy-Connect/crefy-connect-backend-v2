@@ -2,6 +2,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import { server_config } from './index.js';
 import { socialLoginsSwagger } from '../swagger/social.logins.swagger.js';
 import { cryptoTransactionSwagger } from '../swagger/crypto.transaction.swagger.js';
+import { developerSwagger } from '../swagger/developer.swagger.js';
 
 const baseDefinition = {
     openapi: '3.0.0',
@@ -60,14 +61,16 @@ const baseDefinition = {
                 }
             },
             ...socialLoginsSwagger.components?.schemas,
-            ...cryptoTransactionSwagger.components?.schemas
+            ...cryptoTransactionSwagger.components?.schemas,
+            ...developerSwagger.components?.schemas
         }
     },
     // Merge tags and paths from socialLoginsSwagger
-    tags: [...(socialLoginsSwagger.tags || []), ...(cryptoTransactionSwagger.tags || [])],
+    tags: [...(socialLoginsSwagger.tags || []), ...(cryptoTransactionSwagger.tags || []), ...(developerSwagger.tags || [])],
     paths: {
         ...(socialLoginsSwagger.paths || {}),
-        ...(cryptoTransactionSwagger.paths || {})
+        ...(cryptoTransactionSwagger.paths || {}),
+        ...(developerSwagger.paths || {})
     }
 };
 

@@ -80,7 +80,7 @@ class EmailService {
     * Send password reset link to company
     */
     public async sendPasswordResetEmail(name: string, email: string, resetToken: string): Promise<boolean> {
-        const resetLink = `${process.env.FRONTEND_URL}/auth/reset-password?token=${resetToken}`;
+        const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
         return this.sendEmail({
             to: email,

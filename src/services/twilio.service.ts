@@ -1,7 +1,7 @@
 import twilio from 'twilio';
 import * as dotenv from 'dotenv';
-import { twilio_config } from '@src/config/index.js';
-import logger from '@src/utils/logger.js';
+import { twilio_config } from '../config/index.js';
+import logger from '../utils/logger.js';
 
 dotenv.config();
 

@@ -1,7 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { ethers } from 'ethers';
-import logger from '@src/utils/logger.js';
-import { elementpay_config } from '@src/config/index.js';
+import logger from '../utils/logger.js';
+import { elementpay_config } from '../config/index.js';
 import { erc20Abi } from 'viem';
 
 interface CreateOrderParams {

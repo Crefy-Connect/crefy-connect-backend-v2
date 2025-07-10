@@ -3,7 +3,7 @@ import ENSL1SubnameRegistrarService from "../web3/ens.services.js";
 import logger from "../utils/logger.js";
 import { ChainUtils } from "../config/chains.config.js";
 import { Wallet } from "../models/wallet.models.js";
-import { HttpStatus } from "@src/utils/httpStatus.js";
+import { HttpStatus } from "../utils/httpStatus.js";
 import { ENSRoot } from "../models/ensroot.models.js";
 
 export default class ENSController {

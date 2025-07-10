@@ -1,5 +1,5 @@
 import { type Chain } from "viem/chains"
-import { baseSepolia, scrollSepolia, avalancheFuji, base, mainnet, polygon, bsc } from "viem/chains"
+import { baseSepolia, scrollSepolia, avalancheFuji, base, sepolia } from "viem/chains"
 
 // Extended chain interface with additional properties
 export interface ExtendedChain extends Chain {
@@ -59,7 +59,15 @@ export const SUPPORTED_CHAINS: ExtendedChain[] = [
         logo: "https://cryptologos.cc/logos/avalanche-avax-logo.png",
         faucetUrl: "https://faucet.avax.network/",
         bridgeUrl: "https://bridge.avax.network/"
+    },
+    {
+        ...sepolia,
+        isTestnet: true,
+        logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
+        faucetUrl: "https://sepoliafaucet.com/",
+        bridgeUrl: "https://bridge.ethereum.org/"
     }
+
 ]
 
 // Account Abstraction configurations for each supported chain
@@ -166,104 +174,35 @@ export const CHAIN_AA_CONFIGS: Record<number, ChainAAConfig> = {
         ]
     },
 
-    // // Ethereum Mainnet
-    // [mainnet.id]: {
-    //     bundlerUrl: process.env.ETHEREUM_BUNDLER_URL || "https://bundler.biconomy.io/api/v2/1",
-    //     paymasterUrl: process.env.ETHEREUM_PAYMASTER_URL || "https://paymaster.biconomy.io/api/v1/1",
-    //     factoryAddress: "0x000000001D1D5004a02bAfAb9de2D6CE5b7B13de",
-    //     requiresDeployment: false,
-    //     gasPolicy: "FEE",
-    //     maxGasLimit: 500000,
-    //     supportedTokens: [
-    //         {
-    //             symbol: "ETH",
-    //             name: "Ethereum",
-    //             address: "0x0000000000000000000000000000000000000000",
-    //             decimals: 18,
-    //             isNative: true,
-    //             logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
-    //             coingeckoId: "ethereum"
-    //         },
-    //         {
-    //             symbol: "USDC",
-    //             name: "USD Coin",
-    //             address: "0xA0b86a33E6441b8435b662f0E2c8A0E1B4C8C8b8",
-    //             decimals: 6,
-    //             isNative: false,
-    //             logo: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png",
-    //             coingeckoId: "usd-coin"
-    //         },
-    //         {
-    //             symbol: "USDT",
-    //             name: "Tether USD",
-    //             address: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-    //             decimals: 6,
-    //             isNative: false,
-    //             logo: "https://cryptologos.cc/logos/tether-usdt-logo.png",
-    //             coingeckoId: "tether"
-    //         }
-    //     ]
-    // },
-
-    // // Polygon
-    // [polygon.id]: {
-    //     bundlerUrl: process.env.POLYGON_BUNDLER_URL || "https://bundler.biconomy.io/api/v2/137",
-    //     paymasterUrl: process.env.POLYGON_PAYMASTER_URL || "https://paymaster.biconomy.io/api/v1/137",
-    //     factoryAddress: "0x000000001D1D5004a02bAfAb9de2D6CE5b7B13de",
-    //     requiresDeployment: false,
-    //     gasPolicy: "SPONSORED",
-    //     maxGasLimit: 800000,
-    //     supportedTokens: [
-    //         {
-    //             symbol: "MATIC",
-    //             name: "Polygon",
-    //             address: "0x0000000000000000000000000000000000000000",
-    //             decimals: 18,
-    //             isNative: true,
-    //             logo: "https://cryptologos.cc/logos/polygon-matic-logo.png",
-    //             coingeckoId: "matic-network"
-    //         },
-    //         {
-    //             symbol: "USDC",
-    //             name: "USD Coin",
-    //             address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-    //             decimals: 6,
-    //             isNative: false,
-    //             logo: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png",
-    //             coingeckoId: "usd-coin"
-    //         }
-    //     ]
-    // },
-
-    // BSC
-    // [bsc.id]: {
-    //     bundlerUrl: process.env.BSC_BUNDLER_URL || "https://bundler.biconomy.io/api/v2/56",
-    //     paymasterUrl: process.env.BSC_PAYMASTER_URL || "https://paymaster.biconomy.io/api/v1/56",
-    //     factoryAddress: "0x000000001D1D5004a02bAfAb9de2D6CE5b7B13de",
-    //     requiresDeployment: false,
-    //     gasPolicy: "FEE",
-    //     maxGasLimit: 600000,
-    //     supportedTokens: [
-    //         {
-    //             symbol: "BNB",
-    //             name: "BNB",
-    //             address: "0x0000000000000000000000000000000000000000",
-    //             decimals: 18,
-    //             isNative: true,
-    //             logo: "https://cryptologos.cc/logos/bnb-bnb-logo.png",
-    //             coingeckoId: "binancecoin"
-    //         },
-    //         {
-    //             symbol: "USDT",
-    //             name: "Tether USD",
-    //             address: "0x55d398326f99059fF775485246999027B3197955",
-    //             decimals: 18,
-    //             isNative: false,
-    //             logo: "https://cryptologos.cc/logos/tether-usdt-logo.png",
-    //             coingeckoId: "tether"
-    //         }
-    //     ]
-    // }
+    // Ethereum Sepolia
+    [sepolia.id]: {
+        bundlerUrl: process.env.ETHEREUM_SEPOLIA_BUNDLER_URL || "https://bundler.biconomy.io/api/v2/11155111",
+        paymasterUrl: process.env.ETHEREUM_SEPOLIA_PAYMASTER_URL || "https://paymaster.biconomy.io/api/v1/11155111",
+        factoryAddress: "0x000000001D1D5004a02bAfAb9de2D6CE5b7B13de",
+        requiresDeployment: false,
+        gasPolicy: "SPONSORED",
+        maxGasLimit: 1000000,
+        supportedTokens: [
+            {
+                symbol: "ETH",
+                name: "Ethereum",
+                address: "0x0000000000000000000000000000000000000000",
+                decimals: 18,
+                isNative: true,
+                logo: "https://cryptologos.cc/logos/ethereum-eth-logo.png",
+                coingeckoId: "ethereum"
+            },
+            {
+                symbol: "USDC",
+                name: "USD Coin",
+                address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
+                decimals: 6,
+                isNative: false,
+                logo: "https://cryptologos.cc/logos/usd-coin-usdc-logo.png",
+                coingeckoId: "usd-coin"
+            }
+        ]
+    }
 }
 
 /**

@@ -8,5 +8,5 @@ export const HttpStatus = {
     CONFLICT: 409,
     INTERNAL_SERVER_ERROR: 500,
     ACCEPTED: 202,
-    INSUFFICIENT_GAS_FEE: 417
+    INSUFFICIENT_GAS_FEE: 417,
 } as const;

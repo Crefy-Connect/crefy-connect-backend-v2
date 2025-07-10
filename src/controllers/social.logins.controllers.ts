@@ -35,7 +35,7 @@ class SocialLoginsController {
     public async emailWalletLogin(req: Request, res: Response): Promise<Response> {
         logger.info(`Email login request received`);
         try {
-            const appId = req.params.appId;
+            const app = (req as any).app;
             const { email } = req.body;
             const token = req.header('Authorization')?.replace('Bearer ', '');
 
@@ -47,7 +47,7 @@ class SocialLoginsController {
             }
 
             // Check for existing wallet
-            const existingWallet = await Wallet.findOne({ email, socialType: 'email' });
+            const existingWallet = await Wallet.findOne({ email, socialType: 'email', appId: app.appId });
 
             // If token is provided and valid, check if it matches the wallet
             if (token) {
@@ -101,7 +101,7 @@ class SocialLoginsController {
 
             // Create new wallet
             const newWallet = await Wallet.create({
-                appId,
+                appId: app.appId,
                 email,
                 socialType: 'email',
                 address: address,
@@ -141,13 +141,14 @@ class SocialLoginsController {
      */
     public async walletVerify(req: Request, res: Response): Promise<Response> {
         try {
+            const app = (req as any).app;
             const { email, otp } = req.body;
             logger.info(`Wallet verify request received: ${email}, ${otp}`);
             if (!validateEmail(email)) {
                 throw new ApiError(400, 'Valid email is required');
             }
 
-            const wallet = await Wallet.findOne({ email, socialType: 'email' });
+            const wallet = await Wallet.findOne({ email, socialType: 'email', appId: app.appId });
             if (!wallet) {
                 throw new ApiError(404, 'Wallet not found');
             }
@@ -221,8 +222,9 @@ class SocialLoginsController {
      */
     public async resendEmailOTP(req: Request, res: Response): Promise<Response> {
         try {
+            const app = (req as any).app;
             const { email } = req.body;
-            const wallet = await Wallet.findOne({ email, socialType: 'email' });
+            const wallet = await Wallet.findOne({ email, socialType: 'email', appId: app.appId });
             if (!wallet) {
                 throw new ApiError(404, 'Wallet not found');
             }

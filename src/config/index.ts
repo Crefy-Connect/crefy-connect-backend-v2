@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
 import winston, { LoggerOptions } from 'winston';
+import { ENSFactoryContractABI } from '../utils/contracts/ENSFactoryContract.js';
+import { L1SubnameRegistrarContractABI } from '../utils/contracts/L1SubnameRegistrar.js';
 
 dotenv.config();
 
@@ -171,6 +173,9 @@ export const africas_talking_config = {
 
 export const contract_config = {
     ENS_FACTORY_CONTRACT_ADDRESS: process.env.ENS_FACTORY_CONTRACT_ADDRESS || '',
+    ENS_FACTORY_CONTRACT_ABI: ENSFactoryContractABI,
+    L1_SUBNAME_REGISTRAR_CONTRACT_ADDRESS: process.env.L1_SUBNAME_REGISTRAR_CONTRACT_ADDRESS || '',
+    L1_SUBNAME_REGISTRAR_CONTRACT_ABI: L1SubnameRegistrarContractABI,
 };
 
 // Validate configuration on startup

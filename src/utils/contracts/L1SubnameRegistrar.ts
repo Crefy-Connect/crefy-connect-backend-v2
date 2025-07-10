@@ -1,5 +1,3 @@
-export const L1_SUBNAME_REGISTRAR_CONTRACT_ADDRESS = "DYNAMIC_ADDRESS_PLACEHOLDER";
-
 export const L1_SUBNAME_REGISTRAR_CONTRACT_ABI = [
     {
         "inputs": [
@@ -324,4 +322,4 @@ export const L1_SUBNAME_REGISTRAR_CONTRACT_ABI = [
 ] as const;
 
 
-export type L1SubnameRegistrarContractABI = typeof L1_SUBNAME_REGISTRAR_CONTRACT_ABI;
+export const L1SubnameRegistrarContractABI = L1_SUBNAME_REGISTRAR_CONTRACT_ABI;

@@ -139,5 +139,4 @@ export const ENS_FACTORY_CONTRACT_ABI = [
     }
 ] as const;
 
-
-export type ENSFactoryContractABI = typeof ENS_FACTORY_CONTRACT_ABI;
+export const ENSFactoryContractABI = ENS_FACTORY_CONTRACT_ABI;

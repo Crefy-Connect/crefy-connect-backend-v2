@@ -64,11 +64,25 @@ class App {
      * @returns void
      */
     private initializeRequestLogging(): void {
-        // Custom request logging middleware
         this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
             const start = Date.now();
 
-            // Capture response finish event
+            // Get the client IP safely
+            const getClientIp = () => {
+                try {
+                    // Use headers first if behind proxy
+                    const forwarded = req.headers['x-forwarded-for'];
+                    const ip = forwarded
+                        ? (typeof forwarded === 'string' ? forwarded.split(',')[0] : forwarded[0].split(',')[0])
+                        : req.socket.remoteAddress;
+                    return ip || 'unknown';
+                } catch (err) {
+                    return 'unknown';
+                }
+            };
+
+            const clientIp = getClientIp();
+
             res.on('finish', () => {
                 const duration = Date.now() - start;
 
@@ -79,10 +93,9 @@ class App {
                     path: req.path,
                     status: res.statusCode,
                     duration: `${duration}ms`,
-                    ip: req.ip,
+                    ip: clientIp,  // Use our safe IP getter
                     userAgent: req.headers['user-agent'],
                     referrer: req.headers['referer'] || req.headers['referrer'],
-                    // Include these only in development
                     ...(server_config.environment === 'development' && {
                         headers: req.headers,
                         body: req.body,
@@ -95,6 +108,7 @@ class App {
             next();
         });
     }
+
 
     /**
      * Initialize middlewares

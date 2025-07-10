@@ -1,6 +1,6 @@
 import { Router, RequestHandler, Request, Response, NextFunction } from 'express';
 import SocialLoginsController from '../controllers/social.logins.controllers.js';
-import { validateAppIdMiddleware, handleGoogleAuthSession, checkNotAuthenticated } from '../middlewares/auth.middleware.js';
+import { validateAppIdMiddleware, handleGoogleAuthSession, checkNotAuthenticated, validateApiKeyMiddleware } from '../middlewares/auth.middleware.js';
 import passport from 'passport';
 import { ResponseHandler } from '../utils/response.handler.js';
 import SocketManager from '../services/socket.manager.js';
@@ -11,21 +11,21 @@ const router = Router();
 // Email Wallet Social Login
 // *****************************************************************************************************
 router.post(
-    '/email/:appId/email-login',
-    validateAppIdMiddleware as RequestHandler,
+    '/email/email-login',
+    validateApiKeyMiddleware as RequestHandler,
     checkNotAuthenticated as RequestHandler,
     SocialLoginsController.emailWalletLogin as unknown as RequestHandler
 );
 
 router.post(
-    '/email/:appId/wallet-verify',
-    validateAppIdMiddleware as RequestHandler,
+    '/email/wallet-verify',
+    validateApiKeyMiddleware as RequestHandler,
     SocialLoginsController.walletVerify as unknown as RequestHandler
 );
 
 router.post(
-    '/email/:appId/resend-email-otp',
-    validateAppIdMiddleware as RequestHandler,
+    '/email/resend-email-otp',
+    validateApiKeyMiddleware as RequestHandler,
     SocialLoginsController.resendEmailOTP as unknown as RequestHandler
 );
 
@@ -34,8 +34,8 @@ router.post(
 // ***************************************************************************************************** //
 
 router.get(
-    '/google/:appId/initiate-google-auth',
-    validateAppIdMiddleware as RequestHandler,
+    '/google/initiate-google-auth',
+    validateApiKeyMiddleware as RequestHandler,
     handleGoogleAuthSession,
     passport.authenticate('google', {
         session: false,

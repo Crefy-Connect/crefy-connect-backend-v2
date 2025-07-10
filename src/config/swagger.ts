@@ -3,6 +3,8 @@ import { server_config } from './index.js';
 import { socialLoginsSwagger } from '../swagger/social.logins.swagger.js';
 import { cryptoTransactionSwagger } from '../swagger/crypto.transaction.swagger.js';
 import { developerSwagger } from '../swagger/developer.swagger.js';
+import { appSwagger } from '../swagger/app.swagger.js';
+import { ensSwagger } from '../swagger/ens.swagger.js';
 
 const baseDefinition = {
     openapi: '3.0.0',
@@ -62,15 +64,25 @@ const baseDefinition = {
             },
             ...socialLoginsSwagger.components?.schemas,
             ...cryptoTransactionSwagger.components?.schemas,
-            ...developerSwagger.components?.schemas
+            ...developerSwagger.components?.schemas,
+            ...appSwagger.components?.schemas,
+            ...ensSwagger.components?.schemas
         }
     },
     // Merge tags and paths from socialLoginsSwagger
-    tags: [...(socialLoginsSwagger.tags || []), ...(cryptoTransactionSwagger.tags || []), ...(developerSwagger.tags || [])],
+    tags: [
+        ...(socialLoginsSwagger.tags || []),
+        ...(cryptoTransactionSwagger.tags || []),
+        ...(developerSwagger.tags || []),
+        ...(appSwagger.tags || []),
+        ...(ensSwagger.tags || [])
+    ],
     paths: {
         ...(socialLoginsSwagger.paths || {}),
         ...(cryptoTransactionSwagger.paths || {}),
-        ...(developerSwagger.paths || {})
+        ...(developerSwagger.paths || {}),
+        ...(appSwagger.paths || {}),
+        ...(ensSwagger.paths || {})
     }
 };
 

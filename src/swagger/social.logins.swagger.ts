@@ -2,6 +2,18 @@
  * Comprehensive Swagger documentation for social authentication endpoints
  */
 export const socialLoginsSwagger = {
+    openapi: "3.0.0",
+    info: {
+        title: "Social Authentication API",
+        version: "1.0.0",
+        description: "API documentation for social login and wallet authentication endpoints"
+    },
+    servers: [
+        {
+            url: "https://api.example.com/v1",
+            description: "Production server"
+        }
+    ],
     tags: [
         {
             name: "Social Authentication",
@@ -56,8 +68,7 @@ export const socialLoginsSwagger = {
                     },
                     publicKey: {
                         type: "string",
-                        example:
-                            "0x04a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd5b8dec5235a0fa8722476c7709c02559e3aa73aa03918ba2d492eea75abea235",
+                        example: "0x04a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd5b8dec5235a0fa8722476c7709c02559e3aa73aa03918ba2d492eea75abea235",
                         description: "Wallet public key",
                     },
                     socialType: {
@@ -160,54 +171,42 @@ export const socialLoginsSwagger = {
         },
 
         securitySchemes: {
+            ApiKeyAuth: {
+                type: "apiKey",
+                in: "header",
+                name: "x-api-key",
+                description: "Application API key for authentication"
+            },
             BearerAuth: {
                 type: "http",
                 scheme: "bearer",
                 bearerFormat: "JWT",
-                description: "JWT token obtained after successful wallet verification",
-            },
-        },
+                description: "JWT token obtained after successful wallet verification"
+            }
+        }
     },
 
     paths: {
-        "/oauth/email/{appId}/email-login": {
+        "/oauth/email/email-login": {
             post: {
                 summary: "Initiate email authentication",
                 description: `
-                  Initiates email-based authentication flow. The endpoint handles three scenarios:
-                  
-                  1. **Valid JWT Token**: If a valid JWT token is provided and matches an active wallet, returns wallet details immediately
-                  2. **Existing Wallet**: If wallet exists but no valid token, sends OTP for verification
-                  3. **New User**: Creates new wallet and sends OTP for initial verification
-                  
-                  The response varies based on the current state of authentication.
-                  `,
+                    Initiates email-based authentication flow. Requires x-api-key header.
+                    The endpoint handles three scenarios:
+                    
+                    1. **Valid JWT Token**: If a valid JWT token is provided and matches an active wallet, returns wallet details immediately
+                    2. **Existing Wallet**: If wallet exists but no valid token, sends OTP for verification
+                    3. **New User**: Creates new wallet and sends OTP for initial verification
+                `,
                 tags: ["Social Authentication"],
-                parameters: [{
-                    name: "appId",
-                    in: "path",
-                    required: true,
-                    description: "Unique application identifier",
-                    schema: {
-                        type: "string",
-                        pattern: "^[a-zA-Z0-9_-]+$",
-                        example: "my-app-123"
-                    }
-                }],
-                security: [{ BearerAuth: [] }, {}],
+                security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
                 requestBody: {
                     required: true,
                     content: {
                         "application/json": {
-                            schema: { $ref: "#/components/schemas/EmailLoginRequest" },
-                            examples: {
-                                validEmail: {
-                                    summary: "Valid email login",
-                                    value: { email: "user@example.com" },
-                                },
-                            },
-                        },
-                    },
+                            schema: { $ref: "#/components/schemas/EmailLoginRequest" }
+                        }
+                    }
                 },
                 responses: {
                     "200": {
@@ -301,44 +300,22 @@ export const socialLoginsSwagger = {
             },
         },
 
-        "/oauth/email/{appId}/wallet-verify": {
+        "/oauth/email/wallet-verify": {
             post: {
                 summary: "Verify wallet with OTP",
                 description: `
-                  Verifies the OTP sent to email and activates the wallet. If a valid JWT token is provided 
-                  that matches the wallet, returns wallet details without requiring OTP verification.
-                  
-                  **Important**: OTP expires after 10 minutes. Use the resend endpoint if needed.
-                  `,
+                    Verifies the OTP sent to email and activates the wallet. 
+                    Requires x-api-key header.
+                `,
                 tags: ["Social Authentication"],
-                parameters: [{
-                    name: "appId",
-                    in: "path",
-                    required: true,
-                    description: "Unique application identifier",
-                    schema: {
-                        type: "string",
-                        pattern: "^[a-zA-Z0-9_-]+$",
-                        example: "my-app-123"
-                    }
-                }],
-                security: [{ BearerAuth: [] }, {}],
+                security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
                 requestBody: {
                     required: true,
                     content: {
                         "application/json": {
-                            schema: { $ref: "#/components/schemas/WalletVerifyRequest" },
-                            examples: {
-                                validOTP: {
-                                    summary: "Valid OTP verification",
-                                    value: {
-                                        email: "user@example.com",
-                                        otp: "123456",
-                                    },
-                                },
-                            },
-                        },
-                    },
+                            schema: { $ref: "#/components/schemas/WalletVerifyRequest" }
+                        }
+                    }
                 },
                 responses: {
                     "200": {
@@ -413,36 +390,22 @@ export const socialLoginsSwagger = {
             },
         },
 
-        "/oauth/email/{appId}/resend-email-otp": {
+        "/oauth/email/resend-email-otp": {
             post: {
                 summary: "Resend email OTP",
                 description: `
-                  Resends the OTP to the specified email address. Can be used when:
-                  - The original OTP has expired
-                  - The user didn't receive the original email
-                  - The user needs a fresh OTP for verification
-                  
-                  **Rate Limiting**: This endpoint may be rate-limited to prevent abuse.
-                  `,
+                    Resends the OTP to the specified email address. 
+                    Requires x-api-key header.
+                `,
                 tags: ["Social Authentication"],
-                parameters: [{
-                    name: "appId",
-                    in: "path",
-                    required: true,
-                    description: "Unique application identifier",
-                    schema: {
-                        type: "string",
-                        pattern: "^[a-zA-Z0-9_-]+$",
-                        example: "my-app-123"
-                    }
-                }],
+                security: [{ ApiKeyAuth: [] }],
                 requestBody: {
                     required: true,
                     content: {
                         "application/json": {
-                            schema: { $ref: "#/components/schemas/EmailLoginRequest" },
-                        },
-                    },
+                            schema: { $ref: "#/components/schemas/EmailLoginRequest" }
+                        }
+                    }
                 },
                 responses: {
                     "200": {
@@ -491,32 +454,15 @@ export const socialLoginsSwagger = {
             },
         },
 
-        "/oauth/google/{appId}/initiate-google-auth": {
+        "/oauth/google/initiate-google-auth": {
             get: {
                 summary: "Initiate Google OAuth flow",
                 description: `
-                  Redirects the user to Google's OAuth consent screen to begin the authentication process.
-                  After user consent, Google will redirect back to the callback URL with an authorization code.
-                  
-                  **Flow**:
-                  1. User clicks this endpoint
-                  2. Redirected to Google OAuth consent screen
-                  3. User grants permissions
-                  4. Google redirects to callback URL
-                  5. Callback processes the authentication
-                  `,
+                    Redirects the user to Google's OAuth consent screen.
+                    Requires x-api-key header.
+                `,
                 tags: ["Social Authentication"],
-                parameters: [{
-                    name: "appId",
-                    in: "path",
-                    required: true,
-                    description: "Unique application identifier",
-                    schema: {
-                        type: "string",
-                        pattern: "^[a-zA-Z0-9_-]+$",
-                        example: "my-app-123"
-                    }
-                }],
+                security: [{ ApiKeyAuth: [] }],
                 responses: {
                     "302": {
                         description: "Redirect to Google OAuth consent screen",
@@ -551,49 +497,27 @@ export const socialLoginsSwagger = {
             },
         },
 
-        "/oauth/google/{appId}/callback": {
+        "/oauth/google/callback": {
             get: {
                 summary: "Google OAuth callback endpoint",
                 description: `
-                  Handles the callback from Google OAuth flow. This endpoint is called automatically 
-                  by Google after user consent and should not be called directly by clients.
-                  
-                  **Query Parameters** (automatically provided by Google):
-                  - \`code\`: Authorization code from Google
-                  - \`state\`: State parameter for security (optional)
-                  - \`error\`: Error code if authentication failed
-                  `,
+                    Handles the callback from Google OAuth flow. 
+                    This endpoint is called automatically by Google.
+                `,
                 tags: ["Social Authentication"],
                 parameters: [
-                    {
-                        name: "appId",
-                        in: "path",
-                        required: true,
-                        description: "Unique application identifier",
-                        schema: {
-                            type: "string",
-                            pattern: "^[a-zA-Z0-9_-]+$",
-                            example: "my-app-123"
-                        }
-                    },
                     {
                         in: "query",
                         name: "code",
                         schema: { type: "string" },
-                        description: "Authorization code from Google (automatically provided)",
+                        description: "Authorization code from Google",
                     },
                     {
                         in: "query",
                         name: "state",
                         schema: { type: "string" },
-                        description: "State parameter for security (optional)",
-                    },
-                    {
-                        in: "query",
-                        name: "error",
-                        schema: { type: "string" },
-                        description: "Error code if authentication failed",
-                    },
+                        description: "State parameter for security",
+                    }
                 ],
                 responses: {
                     "200": {
@@ -651,5 +575,5 @@ export const socialLoginsSwagger = {
                 },
             },
         },
-    },
-}
+    }
+};

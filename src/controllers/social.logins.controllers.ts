@@ -35,7 +35,7 @@ class SocialLoginsController {
     public async emailWalletLogin(req: Request, res: Response): Promise<Response> {
         logger.info(`Email login request received`);
         try {
-            const app = (req as any).app;
+            const app = (req as any).developer_app;
             const { email } = req.body;
             const token = req.header('Authorization')?.replace('Bearer ', '');
 
@@ -141,7 +141,7 @@ class SocialLoginsController {
      */
     public async walletVerify(req: Request, res: Response): Promise<Response> {
         try {
-            const app = (req as any).app;
+            const app = (req as any).developer_app;
             const { email, otp } = req.body;
             logger.info(`Wallet verify request received: ${email}, ${otp}`);
             if (!validateEmail(email)) {
@@ -222,7 +222,7 @@ class SocialLoginsController {
      */
     public async resendEmailOTP(req: Request, res: Response): Promise<Response> {
         try {
-            const app = (req as any).app;
+            const app = (req as any).developer_app;
             const { email } = req.body;
             const wallet = await Wallet.findOne({ email, socialType: 'email', appId: app.appId });
             if (!wallet) {

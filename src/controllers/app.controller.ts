@@ -80,7 +80,7 @@ class AppController {
     public async updateApp(req: Request, res: Response): Promise<Response> {
         try {
             const developerId = (req as any).user.id;
-            const app = (req as any).app;
+            const app = (req as any).developer_app;
             const { name, description, redirectUrls, iconUrl } = req.body;
 
 
@@ -136,7 +136,7 @@ class AppController {
      */
     public async getApp(req: Request, res: Response): Promise<Response> {
         try {
-            const app = (req as any).app;
+            const app = (req as any).developer_app;
 
             if (!app) {
                 return res.status(404).json({
@@ -213,7 +213,7 @@ class AppController {
     public async deleteApp(req: Request, res: Response): Promise<Response> {
         try {
             const developerId = (req as any).user.id;
-            const app = (req as any).app;
+            const app = (req as any).developer_app;
 
             if (!app) {
                 return res.status(404).json({

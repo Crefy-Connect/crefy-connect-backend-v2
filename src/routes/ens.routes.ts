@@ -21,5 +21,11 @@ router.get(
     controller.checkAvailability.bind(controller) as unknown as RequestHandler
 );
 
+router.post(
+    "/subnames/claim",
+    validateApiKeyMiddleware as RequestHandler,
+    checkWalletAuthenticated as RequestHandler,
+    controller.claimSubname.bind(controller) as unknown as RequestHandler
+);
 
 export default router;

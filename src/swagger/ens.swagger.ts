@@ -60,6 +60,30 @@ export const ensSwagger = {
                 additionalProperties: false
             },
 
+            SubnameClaimRequest: {
+                type: "object",
+                required: ["subName", "chain"],
+                properties: {
+                    subName: {
+                        type: "string",
+                        example: "user123",
+                        description: "Subname to claim"
+                    },
+                    chain: {
+                        type: "string",
+                        enum: ["ethereum", "sepolia", "goerli"],
+                        example: "sepolia",
+                        description: "Blockchain network"
+                    },
+                    useAccountAbstraction: {
+                        type: "boolean",
+                        example: true,
+                        description: "Whether to use account abstraction for gasless transactions (default: false)"
+                    }
+                },
+                additionalProperties: false
+            },
+
             // Response Schemas
             ENSRegisterResponse: {
                 type: "object",
@@ -117,6 +141,59 @@ export const ensSwagger = {
                 required: ["success", "message", "available"]
             },
 
+            SubnameClaimResponse: {
+                type: "object",
+                properties: {
+                    success: {
+                        type: "boolean",
+                        example: true
+                    },
+                    message: {
+                        type: "string",
+                        example: "Subname claimed successfully"
+                    },
+                    data: {
+                        type: "object",
+                        properties: {
+                            status: {
+                                type: "string",
+                                example: "success",
+                                enum: ["success", "error"]
+                            },
+                            address: {
+                                type: "string",
+                                example: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+                            },
+                            hash: {
+                                type: "string",
+                                example: "0x123...abc"
+                            },
+                            gasUsed: {
+                                type: "string",
+                                example: "21000"
+                            },
+                            effectiveGasPrice: {
+                                type: "string",
+                                example: "1000000000"
+                            },
+                            estimatedGas: {
+                                type: "string",
+                                example: "21000"
+                            },
+                            estimatedCost: {
+                                type: "string",
+                                example: "21000000000000"
+                            },
+                            chainId: {
+                                type: "number",
+                                example: 11155111
+                            }
+                        }
+                    }
+                },
+                required: ["success", "message"]
+            },
+
             ErrorResponse: {
                 type: "object",
                 properties: {
@@ -132,6 +209,58 @@ export const ensSwagger = {
                         type: "string",
                         example: "Detailed error (only in development)",
                         description: "Error stack trace or additional details"
+                    },
+                    details: {
+                        type: "object",
+                        properties: {
+                            functionName: {
+                                type: "string",
+                                example: "claimName"
+                            },
+                            args: {
+                                type: "array",
+                                items: {
+                                    type: "string"
+                                },
+                                example: ["user123"]
+                            },
+                            account: {
+                                type: "string",
+                                example: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e"
+                            },
+                            contractAddress: {
+                                type: "string",
+                                example: "0x123...def"
+                            },
+                            chainId: {
+                                type: "number",
+                                example: 11155111
+                            },
+                            estimatedGas: {
+                                type: "string",
+                                example: "21000"
+                            },
+                            gasPrice: {
+                                type: "string",
+                                example: "1000000000"
+                            },
+                            estimatedCost: {
+                                type: "string",
+                                example: "21000000000000"
+                            },
+                            accountBalance: {
+                                type: "string",
+                                example: "1000000000000000"
+                            },
+                            required: {
+                                type: "string",
+                                example: "21000000000000"
+                            },
+                            shortBy: {
+                                type: "string",
+                                example: "-20900000000000"
+                            }
+                        }
                     }
                 },
                 required: ["success", "message"]
@@ -157,7 +286,7 @@ export const ensSwagger = {
     paths: {
         "/ens/roots": {
             post: {
-                summary: "Register a new ENS root domain",
+                summary: "Register a new ENS root domain. (Dashboard)",
                 description: "Registers a new ENS root domain (.eth) that can be used to create subdomains. Requires wallet authentication and valid API key.",
                 tags: ["ENS"],
                 security: [
@@ -251,7 +380,7 @@ export const ensSwagger = {
 
         "/ens/subnames/check-availability": {
             get: {
-                summary: "Check ENS subname availability",
+                summary: "Check ENS subname availability. (Dashboard/CrefyConnect Library /Api)",
                 description: "Checks if a subname is available under the registered ENS root domain. Requires wallet authentication and valid API key.",
                 tags: ["ENS"],
                 security: [
@@ -312,6 +441,132 @@ export const ensSwagger = {
                                 example: {
                                     success: false,
                                     message: "Subname and chain are required"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        description: "Unauthorized - Invalid credentials",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        description: "ENS root not found for this app",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "500": {
+                        description: "Internal server error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+
+        "/ens/subnames/claim": {
+            post: {
+                summary: "Claim a new ENS subname. (CrefyConnect Library /Api)",
+                description: "Claims a new ENS subname under the registered ENS root domain. Supports both regular transactions and account abstraction for gasless transactions. Requires wallet authentication and valid API key.",
+                tags: ["ENS"],
+                security: [
+                    { ApiKeyAuth: [] },
+                    { BearerAuth: [] }
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/SubnameClaimRequest" }
+                        }
+                    }
+                },
+                responses: {
+                    "200": {
+                        description: "Subname claimed successfully",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/SubnameClaimResponse" },
+                                examples: {
+                                    success: {
+                                        value: {
+                                            success: true,
+                                            message: "Subname claimed successfully",
+                                            data: {
+                                                status: "success",
+                                                address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                hash: "0x123...abc",
+                                                gasUsed: "21000",
+                                                effectiveGasPrice: "1000000000",
+                                                estimatedGas: "21000",
+                                                estimatedCost: "21000000000000",
+                                                chainId: 11155111
+                                            }
+                                        }
+                                    },
+                                    aaSuccess: {
+                                        value: {
+                                            success: true,
+                                            message: "Subname claimed successfully using account abstraction",
+                                            data: {
+                                                status: "success",
+                                                address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                hash: "0x456...def",
+                                                chainId: 11155111
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        description: "Validation error or insufficient funds",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    invalidName: {
+                                        value: {
+                                            success: false,
+                                            message: "Invalid subname format",
+                                            details: {
+                                                functionName: "claimName",
+                                                args: ["invalid name"],
+                                                account: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                contractAddress: "0x123...def",
+                                                chainId: 11155111
+                                            }
+                                        }
+                                    },
+                                    insufficientFunds: {
+                                        value: {
+                                            success: false,
+                                            message: "Insufficient funds for gas fee",
+                                            details: {
+                                                functionName: "claimName",
+                                                args: ["user123"],
+                                                estimatedGas: "21000",
+                                                gasPrice: "1000000000",
+                                                estimatedCost: "21000000000000",
+                                                accountBalance: "1000000000000000",
+                                                required: "21000000000000",
+                                                shortBy: "-20900000000000",
+                                                account: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                contractAddress: "0x123...def",
+                                                chainId: 11155111
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }

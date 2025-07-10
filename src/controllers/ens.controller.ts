@@ -153,5 +153,75 @@ export default class ENSController {
         }
     }
 
+    /**
+     * @api {post} /ens/subnames/claim Claim Subname
+     * @apiName ClaimSubname
+     * @apiGroup ENS
+     */
+    public async claimSubname(req: Request, res: Response) {
+        try {
+            const { _id: walletId } = (req as any).wallet;
+            const { subName, chain } = req.body;
+            const { appId } = (req as any).developer_app;
 
+            if (!subName || !chain) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: "ENS name and chain are required"
+                });
+            }
+
+            const ensService = await this.initializeENSService(walletId, chain, appId);
+
+            const isTaken = await ensService.isNameTaken(subName as string);
+            if (isTaken) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: "Subname is already taken"
+                });
+            }
+            const response: any = await ensService.claimName(subName as string);
+            if (response.status === 'error') {
+                const gasInfoMatch = response.error.match(
+                    /maxFeePerGas:\s+([^\s]+)\s+gwei.*?maxPriorityFeePerGas:\s+([^\s]+)\s+gwei/s
+                );
+                let maxFeePerGas = 0;
+                let maxPriorityFeePerGas = 0;
+                let errorDetails: any = {};
+
+                errorDetails = {
+                    url: response.error.match(/URL:\s+([^\n]+)/)?.[1]?.trim(),
+                    requestBody: response.error.match(/Request body:\s+([^\n]+)/)?.[1]?.trim(),
+                    gasParams: {} as Record<string, string>
+                };
+
+                if (gasInfoMatch) {
+                    maxFeePerGas = gasInfoMatch[1];
+                    maxPriorityFeePerGas = gasInfoMatch[2];
+                }
+
+                return res.status(HttpStatus.INSUFFICIENT_GAS_FEE).json({
+                    success: false,
+                    errorDetails: errorDetails,
+                    maxFeePerGas: maxFeePerGas,
+                    maxPriorityFeePerGas: maxPriorityFeePerGas,
+                    balance: Number(response.balance)
+                });
+            }
+
+            return res.status(HttpStatus.OK).json({
+                success: true,
+                message: "Subname claimed successfully",
+                data: {
+                    txHash: response.hash
+                }
+            });
+        } catch (error: any) {
+            logger.error(`Error in claimSubname: ${error.message}`);
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
 }

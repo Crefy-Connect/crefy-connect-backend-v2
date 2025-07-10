@@ -1,10 +1,11 @@
 import ENSL1SubnameRegistrarService from "./web3/ens.services.js";
 import readline from 'readline';
 import { stdin as input, stdout as output } from 'process';
+import { parseEther } from "viem";
 
 const privateKey = "0x1895606f6f2d1e720670c578df0495e03c6be7a45245a40f88ec465d1a30da7a";
 const chainName = "sepolia";
-const registrarService = new ENSL1SubnameRegistrarService(chainName, privateKey);
+const registrarService = new ENSL1SubnameRegistrarService(chainName, privateKey, '0x062D64Eb51f906d4cFfEf3F2954866197c63c648');
 
 // Create readline interface
 const rl = readline.createInterface({ input, output });
@@ -129,18 +130,34 @@ async function handleInput(choice: string) {
                     console.log('\nStarting name claim process...');
                     const startTime = Date.now();
 
-                    const result = await registrarService.claimName(name);
+                    const result: any = await registrarService.claimName(name);
 
                     const endTime = Date.now();
                     const timeTaken = (endTime - startTime) / 1000; // Convert to seconds
 
                     console.log('\nClaim successful!');
-                    console.log('Transaction Hash:', result.hash);
-                    console.log('Time taken:', timeTaken.toFixed(2), 'seconds');
+                    if (result.status === 'error' && result.details.shortBy) {
+                        console.error(`Estimated cost: ${result.details.formatted.estimatedCost}`);
+                        console.error(`Your balance: ${result.details.formatted.accountBalance}`);
+                    } else if (result.status === 'error') {
+                        console.log("RESULT", JSON.stringify(result));
+                        const gasInfoMatch = result.error.match(
+                            /maxFeePerGas:\s+([^\s]+)\s+gwei.*?maxPriorityFeePerGas:\s+([^\s]+)\s+gwei/s
+                        );
 
-                    if (result.receipt) {
-                        console.log('Gas used:', result.receipt.gasUsed.toString());
-                        console.log('Block number:', result.receipt.blockNumber);
+                        if (gasInfoMatch) {
+                            console.log('\nEstimated Gas Parameters:');
+                            console.log(`Max Fee Per Gas: ${gasInfoMatch[1]} gwei`);
+                            console.log(`Max Priority Fee Per Gas: ${gasInfoMatch[2]} gwei`);
+                        }
+
+                        if (result.error.includes('revert')) {
+                            console.error('This likely means the name is already taken or you lack permission.');
+                        }
+                    } else {
+                        console.log(`Success! Transaction hash: ${result.hash}`);
+                        console.log(`Gas used: ${result.gasUsed.toString()}`);
+                        console.log(`Cost: ${result.formattedCost}`);
                     }
                 } catch (error: any) {
                     console.error('\nError:', error.message);

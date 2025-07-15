@@ -56,7 +56,7 @@ export async function authenticateDeveloper(
         if (!developer.isActive) {
             throw new ApiError(403, "Developer account is not active");
         }
-
+        console.log(decoded)
         // Attach user to request
         req.user = { id: decoded.id };
         next();

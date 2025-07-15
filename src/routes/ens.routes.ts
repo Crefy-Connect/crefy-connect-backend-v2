@@ -1,6 +1,6 @@
 // ens.routes.ts
 import { RequestHandler, Router } from "express";
-import { checkWalletAuthenticated, validateApiKeyMiddleware } from "../middlewares/auth.middleware.js";
+import { checkWalletAuthenticated, validateApiKeyMiddleware, authenticateDeveloper } from "../middlewares/auth.middleware.js";
 import ENSController from "../controllers/ens.controller.js"; // Updated import
 
 const router = Router();
@@ -10,7 +10,7 @@ const controller = new ENSController();
 router.post(
     "/roots",
     validateApiKeyMiddleware as RequestHandler,
-    checkWalletAuthenticated as RequestHandler,
+    authenticateDeveloper as RequestHandler,
     controller.registerRoot.bind(controller) as unknown as RequestHandler
 );
 

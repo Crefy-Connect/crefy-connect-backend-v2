@@ -3,7 +3,7 @@ import readline from 'readline';
 import { stdin as input, stdout as output } from 'process';
 import { parseEther } from "viem";
 
-const privateKey = "0x1895606f6f2d1e720670c578df0495e03c6be7a45245a40f88ec465d1a30da7a";
+const privateKey = "0x421b83bb8f9f290947b09a6010253b5b6bad4f8dfa367612ff200f5e89b5109c";
 const chainName = "sepolia";
 const registrarService = new ENSL1SubnameRegistrarService(chainName, privateKey, '0x062D64Eb51f906d4cFfEf3F2954866197c63c648');
 
@@ -130,15 +130,15 @@ async function handleInput(choice: string) {
                     console.log('\nStarting name claim process...');
                     const startTime = Date.now();
 
-                    const result: any = await registrarService.claimName(name);
+                    const result: any = await registrarService.claimName(name, true);
 
                     const endTime = Date.now();
                     const timeTaken = (endTime - startTime) / 1000; // Convert to seconds
 
                     console.log('\nClaim successful!');
                     if (result.status === 'error' && result.details.shortBy) {
-                        console.error(`Estimated cost: ${result.details.formatted.estimatedCost}`);
-                        console.error(`Your balance: ${result.details.formatted.accountBalance}`);
+                        console.error(`Estimated cost: ${Number(result.details.formatted.estimatedCost)}`);
+                        console.error(`Your balance: ${Number(result.details.formatted.accountBalance)}`);
                     } else if (result.status === 'error') {
                         console.log("RESULT", JSON.stringify(result));
                         const gasInfoMatch = result.error.match(

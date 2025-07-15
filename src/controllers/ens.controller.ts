@@ -50,7 +50,7 @@ export default class ENSController {
      */
     public async registerRoot(req: Request, res: Response) {
         try {
-            const { _id: walletId } = (req as any).wallet;
+            const { id: walletId } = (req as any).user;
             const { ens_name, contractAddress, chain, isActive } = req.body;
 
             if (!ens_name || !chain) {

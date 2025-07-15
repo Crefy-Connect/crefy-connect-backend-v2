@@ -33,7 +33,6 @@ interface ContractCall {
     value?: string;
 }
 
-
 interface TransactionResult {
     status: 'success';
     address: string;
@@ -41,8 +40,8 @@ interface TransactionResult {
     receipt: any;
     gasUsed: bigint;
     effectiveGasPrice: bigint;
-    estimatedGas: bigint; // Estimated gas before execution
-    estimatedCost: bigint; // Estimated cost (gas * gasPrice)
+    estimatedGas: bigint;
+    estimatedCost: bigint;
     chainId: number;
 }
 
@@ -55,12 +54,12 @@ interface ErrorResponse {
         account: string;
         contractAddress: string;
         chainId: number;
-        estimatedGas?: bigint; // Only if gas estimation was done
-        gasPrice?: bigint; // Only if gas estimation was done
-        estimatedCost?: bigint; // Only if gas estimation was done
-        accountBalance?: bigint; // Only if balance check failed
-        required?: bigint; // Only if balance check failed
-        shortBy?: bigint; // Only if balance check failed
+        estimatedGas?: bigint;
+        gasPrice?: bigint;
+        estimatedCost?: bigint;
+        accountBalance?: bigint;
+        required?: bigint;
+        shortBy?: bigint;
     };
 }
 
@@ -73,14 +72,13 @@ class ENSL1SubnameRegistrarService {
     private chain: Chain;
     private walletClient: WalletClient;
 
-
     constructor(chainName: string, privateKey: string, contractAddress: Address) {
         this.contractAddress = contractAddress;
         this.contractABI = contract_config.L1_SUBNAME_REGISTRAR_CONTRACT_ABI;
 
         const chain = ChainUtils.getChainByName(chainName);
         if (!chain) {
-            throw new Error(`Chain not found for name: ${chainName}`);
+            throw new Error(`Chain not found: ${chainName}`);
         }
 
         if (!privateKey) {
@@ -88,11 +86,135 @@ class ENSL1SubnameRegistrarService {
         }
 
         this.chain = chain;
-        this.aaService = new AccountAbstractionService({ privateKey, chainId: this.chain.id });
-
         this.account = privateKeyToAccount(privateKey as `0x${string}`);
+        this.aaService = new AccountAbstractionService({
+            privateKey,
+            chainId: this.chain.id
+        });
 
-        // Initialize public client for read operations
+
+        this.initializeClients();
+    }
+
+    // ========================
+    // Public Methods
+    // ========================
+
+    // View functions
+    async getNameWrapperAddress(): Promise<Address> {
+        return this.readContract("NameWrapperAddress", []);
+    }
+
+    async getId(): Promise<number> {
+        return this.readContract("getId", []);
+    }
+
+    async getSubnameOwner(label: string): Promise<Address> {
+        return this.readContract("getSubnameOwner", [label]);
+    }
+
+    async isNameTaken(name: string): Promise<boolean> {
+        const normalizedName = normalize(name);
+        const labelHash = labelhash(normalizedName);
+        return this.readContract("nameTaken", [labelHash]);
+    }
+
+    async ownsParentNode(): Promise<boolean> {
+        return this.readContract("ownsParentNode", []);
+    }
+
+    async getParentNode(): Promise<string> {
+        return this.readContract("parentNode", []);
+    }
+
+    async getSubnameOwnerByNode(node: string): Promise<Address> {
+        return this.readContract("subnameOwners", [node]);
+    }
+
+    async viewAllSubnames(): Promise<string[]> {
+        return this.readContract("viewAllSubnames", []);
+    }
+
+    async supportsInterface(interfaceId: string): Promise<boolean> {
+        return this.readContract("supportsInterface", [interfaceId]);
+    }
+
+    async getBalance(): Promise<{ balance: string, address: Address }> {
+        try {
+            const balance = await this.publicClient.getBalance({
+                address: this.account.address
+            });
+            return {
+                balance: formatEther(balance),
+                address: this.account.address
+            };
+        } catch (error: any) {
+            logger.error(`Balance check failed: ${error.message}`);
+            throw new Error(`Balance check failed: ${error.message}`);
+        }
+    }
+
+    async claimName(name: string, sponsored: boolean = false): Promise<TransactionResult | ErrorResponse> {
+        // Validate input
+        if (!name || typeof name !== 'string' || name.length < 3) { // Changed to min 3 characters
+            return this.formatError(
+                'Name must be at least 3 characters',
+                'claimName',
+                [name]
+            );
+        }
+
+        const normalizedName = normalize(name);
+        logger.info(`Claiming name: ${normalizedName}`);
+
+        // Additional pre-flight checks
+        try {
+            const taken = await this.isNameTaken(name);
+            if (taken) {
+                return this.formatError(
+                    `Name '${name}' is already taken`,
+                    'claimName',
+                    [name]
+                );
+            }
+
+            const ownsParent = await this.ownsParentNode();
+            if (!ownsParent) {
+                return this.formatError(
+                    `Parent node is not owned by the contract`,
+                    'claimName',
+                    [name]
+                );
+            }
+        } catch (error: any) {
+            return this.formatError(
+                `Pre-flight check failed: ${error.message}`,
+                'claimName',
+                [name]
+            );
+        }
+
+        // Execute transaction
+        try {
+            return sponsored
+                ? await this.aaWriteContract("claimName", [normalizedName])
+                : await this.writeContract("claimName", [normalizedName]);
+        } catch (error: any) {
+            logger.error(`Claim failed: ${error.message}`);
+            return this.formatError(
+                error.message,
+                'claimName',
+                [name]
+            );
+        }
+    }
+
+
+    // ========================
+    // Private Helpers
+    // ========================
+
+    private initializeClients() {
         this.publicClient = createPublicClient({
             chain: this.chain,
             transport: http()
@@ -105,321 +227,132 @@ class ENSL1SubnameRegistrarService {
         });
     }
 
-    // View functions
-    async getNameWrapperAddress(): Promise<Address> {
-        return this.readContract({
-            functionName: "NameWrapperAddress",
-            args: []
-        });
-    }
-
-    async getId(): Promise<number> {
-        return this.readContract({
-            functionName: "getId",
-            args: []
-        });
-    }
-
-    async getSubnameOwner(label: string): Promise<Address> {
-        return this.readContract({
-            functionName: "getSubnameOwner",
-            args: [label]
-        });
-    }
-
-    async isNameTaken(name: string): Promise<boolean> {
-        const normalizedName = normalize(name);
-        const hashedNode = labelhash(normalizedName);
-        console.log(hashedNode);
-        console.log(typeof hashedNode);
-        return this.readContract({
-            functionName: "nameTaken",
-            args: [hashedNode]
-        });
-    }
-
-    async ownsParentNode(): Promise<boolean> {
-        return this.readContract({
-            functionName: "ownsParentNode",
-            args: []
-        });
-    }
-
-    async getParentNode(): Promise<string> {
-        return this.readContract({
-            functionName: "parentNode",
-            args: []
-        });
-    }
-
-    async getSubnameOwnerByNode(node: string): Promise<Address> {
-        return this.readContract({
-            functionName: "subnameOwners",
-            args: [node]
-        });
-    }
-
-    async viewAllSubnames(): Promise<string[]> {
-        return this.readContract({
-            functionName: "viewAllSubnames",
-            args: []
-        });
-    }
-
-    async supportsInterface(interfaceId: string): Promise<boolean> {
-        return this.readContract({
-            functionName: "supportsInterface",
-            args: [interfaceId]
-        });
-    }
-
-    async getBalance(): Promise<{ balance: string, address: Address }> {
-        try {
-            const balance = await this.publicClient.getBalance({
-                address: this.account.address
-            });
-            return {
-                balance: formatEther(balance),
-                address: this.account.address
-            }
-        } catch (error: any) {
-            logger.error(`Failed to get balance: ${error.message}`);
-            throw new Error(`Failed to get balance: ${error.message}`);
-        }
-    }
-
-    async claimName(name: string, sponsored: boolean = false): Promise<TransactionResult | ErrorResponse> {
-        try {
-            // Validate name format first
-            if (!name || typeof name !== 'string' || name.length < 1) {
-                return {
-                    status: 'error',
-                    error: 'Invalid name format',
-                    details: {
-                        functionName: 'claimName',
-                        args: [name],
-                        account: this.account.address,
-                        contractAddress: this.contractAddress,
-                        chainId: this.chain.id
-                    }
-                };
-            }
-
-            // Debug logging
-            logger.info(`Attempting to claim name: ${name}`);
-            const normalizedName = normalize(name);
-            logger.info(`Normalized name: ${normalizedName}`);
-
-            // First try simulation
-            try {
-                const { request } = await this.publicClient.simulateContract({
-                    account: this.account,
-                    address: this.contractAddress,
-                    abi: this.contractABI,
-                    functionName: "claimName",
-                    args: [normalizedName]
-                });
-                logger.info('Simulation successful', request);
-            } catch (simError) {
-                logger.error('Simulation failed', simError);
-                return {
-                    status: 'error',
-                    error: `Simulation failed: ${simError instanceof Error ? simError.message : String(simError)}`,
-                    details: {
-                        functionName: 'claimName',
-                        args: [name],
-                        account: this.account.address,
-                        contractAddress: this.contractAddress,
-                        chainId: this.chain.id
-                    }
-                };
-            }
-
-            // If simulation passes, proceed with actual transaction
-            if (sponsored) {
-                return await this.aaWriteContract({
-                    functionName: "claimName",
-                    args: [normalizedName]
-                });
-            }
-            return await this.writeContract({
-                functionName: "claimName",
-                args: [normalizedName]
-            });
-        } catch (error: any) {
-            logger.error(`Claim name failed: ${error.message}`);
-            return {
-                status: 'error',
-                error: error.message,
-                details: {
-                    functionName: 'claimName',
-                    args: [name],
-                    account: this.account.address,
-                    contractAddress: this.contractAddress,
-                    chainId: this.chain.id
-                }
-            };
-        }
-    }
-
-
-    // Helper methods
-    private async readContract(params: {
-        functionName: string;
-        args: any[];
-    }): Promise<any> {
+    private async readContract(functionName: string, args: any[]): Promise<any> {
         try {
             return await this.publicClient.readContract({
                 address: this.contractAddress,
                 abi: this.contractABI,
-                functionName: params.functionName,
-                args: params.args
+                functionName,
+                args
             });
         } catch (error: any) {
-            logger.error(`Contract read failed for ${params.functionName}: ${error.message}`);
+            logger.error(`Read failed: ${functionName} - ${error.message}`);
             throw new Error(`Contract read failed: ${error.message}`);
         }
     }
 
-    private async writeContract(params: {
-        functionName: string;
-        args: any[];
-    }): Promise<any> {
+    private async simulateContract(functionName: string, args: any[]) {
+        await this.publicClient.simulateContract({
+            account: this.account,
+            address: this.contractAddress,
+            abi: this.contractABI,
+            functionName,
+            args
+        });
+    }
+
+    private async writeContract(functionName: string, args: any[]): Promise<TransactionResult> {
+        // Get current balance
         const balance = await this.publicClient.getBalance({
             address: this.account.address,
         });
+
+        // Simulation
+        const { request } = await this.publicClient.simulateContract({
+            account: this.account,
+            address: this.contractAddress,
+            abi: this.contractABI,
+            functionName,
+            args,
+        });
+
+        // Gas estimation
+        let gasEstimate: bigint;
         try {
-            console.log("FUNCTION NAME", params.functionName, params.args, this.contractAddress);
-            // 1. Simulate the contract call (to check for revert errors)
-            const { request } = await this.publicClient.simulateContract({
+            gasEstimate = await this.publicClient.estimateContractGas({
                 account: this.account,
                 address: this.contractAddress,
                 abi: this.contractABI,
-                functionName: params.functionName,
-                args: params.args,
+                functionName,
+                args,
             });
-
-            // 2. Estimate gas required for the transaction
-            const gasEstimate = await this.publicClient.estimateContractGas({
-                account: this.account,
-                address: this.contractAddress,
-                abi: this.contractABI,
-                functionName: params.functionName,
-                args: params.args,
-            });
-
-            // 3. Get current gas price
-            const gasPrice = await this.publicClient.getGasPrice();
-            // 4. Calculate estimated cost in ETH (gas * gasPrice)
-            const estimatedCost = gasEstimate * gasPrice;
-            console.log("ESTIMATED COST", estimatedCost);
-            // 5. Get account balance to check if they can afford it
-
-
-            // 6. Check if balance is sufficient
-            if (balance < estimatedCost) {
-                return {
-                    status: 'error',
-                    error: 'Insufficient funds for gas fee',
-                    details: {
-                        functionName: params.functionName,
-                        args: params.args,
-                        estimatedGas: gasEstimate,
-                        gasPrice,
-                        estimatedCost,
-                        accountBalance: balance,
-                        required: estimatedCost,
-                        shortBy: balance - estimatedCost,
-                    },
-                };
+        } catch (estimateError: any) {
+            // Extract revert reason if available
+            let errorMsg = estimateError.message;
+            if (estimateError.cause?.data?.errorName) {
+                errorMsg = `Contract reverted: ${estimateError.cause.data.errorName}`;
             }
-
-            // 7. If balance is sufficient, proceed with transaction
-            const txHash = await this.walletClient.writeContract(request);
-
-            // 8. Wait for transaction receipt
-            const receipt = await this.publicClient.waitForTransactionReceipt({
-                hash: txHash,
-            });
-
-            return {
-                status: 'success',
-                address: this.account.address,
-                hash: txHash,
-                receipt,
-                gasUsed: receipt.gasUsed,
-                effectiveGasPrice: receipt.effectiveGasPrice,
-                estimatedGas: gasEstimate, // Return estimated gas for reference
-                estimatedCost, // Return estimated cost for reference
-                chainId: this.chain.id,
-            };
-        } catch (error: any) {
-            console.log("ERROR", error);
-            return {
-                status: 'error',
-                error: error.message,
-                balance: balance,
-                details: {
-                    functionName: params.functionName,
-                    args: params.args,
-                    account: this.account.address,
-                    contractAddress: this.contractAddress,
-                    chainId: this.chain.id,
-                },
-            };
+            throw new Error(`Gas estimation failed: ${errorMsg}`);
         }
+
+
+        const gasPrice = await this.publicClient.getGasPrice();
+        const estimatedCost = gasEstimate * gasPrice;
+
+        // Balance check
+        if (balance < estimatedCost) {
+            throw new Error(
+                `Insufficient funds. Required: ${formatEther(estimatedCost)} ETH, Available: ${formatEther(balance)} ETH`
+            );
+        }
+
+        // Execute transaction
+        const txHash = await this.walletClient.writeContract(request);
+        const receipt = await this.publicClient.waitForTransactionReceipt({
+            hash: txHash,
+        });
+
+        return {
+            status: 'success',
+            address: this.account.address,
+            hash: txHash,
+            receipt,
+            gasUsed: receipt.gasUsed,
+            effectiveGasPrice: receipt.effectiveGasPrice,
+            estimatedGas: gasEstimate,
+            estimatedCost,
+            chainId: this.chain.id,
+        };
     }
 
-    private async aaWriteContract(params: {
-        functionName: string;
-        args: any[];
-    }): Promise<any> {
-        try {
-            console.log("INITIALIZING AA PROCESS ON ENS CONTRACT");
-            const response: any = await this.aaService.executeContractFunction({
+    private async aaWriteContract(functionName: string, args: any[]): Promise<TransactionResult> {
+        const response = await this.aaService.executeContractFunction({
+            contractAddress: this.contractAddress,
+            abi: this.contractABI,
+            functionName,
+            args
+        }, "SPONSORED");
+
+        return {
+            status: 'success',
+            address: this.account.address,
+            hash: response.transactionHash,
+            receipt: response.receipt,
+            gasUsed: response.gasUsed,
+            effectiveGasPrice: response.effectiveGasPrice,
+            estimatedGas: response.gasLimit,
+            estimatedCost: response.gasLimit * response.gasPrice,
+            chainId: this.chain.id,
+        };
+    }
+
+    private formatError(
+        error: string,
+        functionName: string,
+        args: any[]
+    ): ErrorResponse {
+        return {
+            status: 'error',
+            error,
+            details: {
+                functionName,
+                args,
+                account: this.account.address,
                 contractAddress: this.contractAddress,
-                abi: this.contractABI,
-                functionName: params.functionName,
-                args: params.args
-            }, "SPONSORED");
-
-            // Transform AA response to match writeContract structure
-            return {
-                status: 'success',
-                address: this.account.address,
-                hash: response.transactionHash || response.hash,
-                receipt: response.receipt || {
-                    transactionHash: response.transactionHash,
-                    gasUsed: response.gasUsed,
-                    effectiveGasPrice: response.effectiveGasPrice,
-                    status: response.success ? 'success' : 'reverted'
-                },
-                gasUsed: response.gasUsed,
-                effectiveGasPrice: response.effectiveGasPrice,
-                estimatedGas: response.gasLimit || response.estimatedGas,
-                estimatedCost: response.estimatedCost || (response.gasLimit && response.gasPrice
-                    ? response.gasLimit * response.gasPrice
-                    : undefined),
                 chainId: this.chain.id,
-                isAA: true // Additional flag to indicate this was an AA transaction
-            };
-        } catch (error: any) {
-            logger.error(`Contract write failed for ${params.functionName}: ${error.message}`);
-            return {
-                status: 'error',
-                error: error.message,
-                details: {
-                    functionName: params.functionName,
-                    args: params.args,
-                    account: this.account.address,
-                    contractAddress: this.contractAddress,
-                    chainId: this.chain.id,
-                    isAA: true
-                }
-            };
-        }
+            }
+        };
     }
-
 }
 
 export default ENSL1SubnameRegistrarService;

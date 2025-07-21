@@ -6,7 +6,7 @@ import { Wallet } from "../models/wallet.models.js";
 import { HttpStatus } from "../utils/httpStatus.js";
 import { ENSRoot } from "../models/ensroot.models.js";
 import { Web3Service } from "../services/web3.service.js";
-import { contract_config } from "src/config/index.js";
+import { contract_config } from "../config/index.js";
 
 
 export default class ENSController {
@@ -309,6 +309,73 @@ export default class ENSController {
             logger.error(`Error in prepareCreateSubnameRegistrar: ${error.message}`);
 
             if (error.message.includes("ENS name must be a valid string")) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    /**
+ * @api {post} /ens/namewrapper/prepare-transfer Prepare NameWrapper Transfer
+ * @apiName PrepareNameWrapperTransfer
+ * @apiGroup ENS
+ * @apiDescription Prepares a safeTransferFrom transaction for the ENS NameWrapper contract
+ */
+    public async prepareNameWrapperTransfer(req: Request, res: Response) {
+        try {
+            const { id: userID } = (req as any).user;
+            const { chain, from, to, id, amount, data } = req.body;
+            const { appId } = (req as any).developer_app;
+
+            if (!chain || !from || !to || id === undefined) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: "Chain, from, to, and id are required parameters"
+                });
+            }
+
+            // Validate the chain
+            const chainConfig = ChainUtils.getChainByName(chain);
+            if (!chainConfig) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: `Unsupported chain: ${chain}`
+                });
+            }
+
+            // Initialize Web3 service
+            const web3Service = new Web3Service(chain);
+
+            // Prepare the transaction call data
+            const preparedTx = await web3Service.prepareNameWrapperTransfer(
+                contract_config.ENS_NAMEWRAPPER_CONTRACT_ADDRESS as `0x${string}`,
+                contract_config.ENS_NAMEWRAPPER_CONTRACT_ABI,
+                {
+                    from,
+                    to,
+                    id,
+                    amount: amount || 1, // Default to 1 if amount not specified
+                    data: data || '0x' // Default to empty bytes
+                }
+            );
+
+            return res.status(HttpStatus.OK).json({
+                success: true,
+                message: "NameWrapper transfer transaction prepared successfully",
+                data: preparedTx
+            });
+
+        } catch (error: any) {
+            logger.error(`Error in prepareNameWrapperTransfer: ${error.message}`);
+
+            if (error.message.includes("invalid address") || error.message.includes("invalid parameters")) {
                 return res.status(HttpStatus.BAD_REQUEST).json({
                     success: false,
                     message: error.message

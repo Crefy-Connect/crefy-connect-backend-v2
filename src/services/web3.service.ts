@@ -6,6 +6,9 @@ import {
     createPublicClient,
     http,
     type PublicClient,
+    toHex,
+    encodeAbiParameters,
+    parseAbiParameters
 } from "viem";
 import { normalize, labelhash } from "viem/ens";
 import { ChainUtils } from "../config/chains.config.js";
@@ -18,6 +21,14 @@ interface PreparedTransaction {
     gas?: string;
     from?: Address;
     chainId?: number;
+}
+
+interface NameWrapperTransferParams {
+    from: Address;
+    to: Address;
+    id: bigint | string | number;
+    amount?: bigint | string | number;
+    data?: string;
 }
 
 export class Web3Service {
@@ -68,7 +79,7 @@ export class Web3Service {
                 });
             } catch (error) {
                 logger.error(`Gas estimation failed: ${error}`);
-                estimatedGas = BigInt(500000);
+                estimatedGas = BigInt(500000); // Default gas limit
             }
 
             return {
@@ -106,5 +117,40 @@ export class Web3Service {
             BigInt(0),
             from
         );
+    }
+
+    public async prepareNameWrapperTransfer(
+        contractAddress: Address,
+        abi: Abi,
+        params: NameWrapperTransferParams
+    ): Promise<PreparedTransaction> {
+        try {
+            // Convert all parameters to the correct types
+            const from = params.from;
+            const to = params.to;
+            const id = BigInt(params.id);
+            const amount = params.amount ? BigInt(params.amount) : BigInt(1);
+            const data = params.data || toHex(new Uint8Array()); // Default to empty bytes
+
+            // Validate addresses
+            if (!/^0x[a-fA-F0-9]{40}$/.test(from)) {
+                throw new Error("Invalid 'from' address");
+            }
+            if (!/^0x[a-fA-F0-9]{40}$/.test(to)) {
+                throw new Error("Invalid 'to' address");
+            }
+
+            return this.prepareTransaction(
+                contractAddress,
+                abi,
+                "safeTransferFrom",
+                [from, to, id, amount, data],
+                BigInt(0), // Typically no value needed for transfers
+                from
+            );
+        } catch (error) {
+            logger.error(`Error preparing NameWrapper transfer: ${error}`);
+            throw new Error(`Failed to prepare NameWrapper transfer: ${error instanceof Error ? error.message : String(error)}`);
+        }
     }
 }

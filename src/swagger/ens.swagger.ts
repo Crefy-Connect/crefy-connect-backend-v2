@@ -710,12 +710,11 @@ export const ensSwagger = {
 
         "/ens/name": {
             get: {
-                summary: "Get ENS root name for the current app. (Dashboard)",
+                summary: "Get ENS root name for the current app.",
                 description: "Returns the ENS root name, contract address, and status for the current app. Requires API key and developer authentication.",
                 tags: ["ENS"],
                 security: [
-                    { ApiKeyAuth: [] },
-                    { BearerAuth: [] }
+                    { ApiKeyAuth: [] }
                 ],
                 responses: {
                     "200": {

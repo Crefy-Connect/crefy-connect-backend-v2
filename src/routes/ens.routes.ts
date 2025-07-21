@@ -23,7 +23,6 @@ router.post(
 router.get(
     "/name",
     validateApiKeyMiddleware as RequestHandler,
-    authenticateDeveloper as RequestHandler,
     controller.getENSName.bind(controller) as unknown as RequestHandler
 );
 

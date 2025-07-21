@@ -34,11 +34,10 @@ router.post(
 // ***************************************************************************************************** //
 
 router.get(
-    '/google/initiate-google-auth',
-    validateApiKeyMiddleware as RequestHandler,
+    '/google/:appId/initiate-google-auth',
     handleGoogleAuthSession,
     passport.authenticate('google', {
-        session: false,
+        session: true,
         scope: ['profile', 'email'],
         prompt: 'select_account'
     })
@@ -47,51 +46,12 @@ router.get(
 // Enhanced Google OAuth callback handler
 router.get('/google/callback',
     passport.authenticate('google', {
-        session: false,
+        session: true,
         failureRedirect: '/api/v1/oauth/google/failure'
     }),
-    (req: Request, res: Response, next: NextFunction) => {
-        try {
-            const wallet = req.user as any;
-            const sessionId = req.query.state as string;
-
-            // Socket.io emission remains the same
-            const socketManager = SocketManager.getInstance();
-            socketManager.emitToSession(sessionId, 'google-auth-success', {
-                message: 'Google authentication successful',
-                wallet: {
-                    address: wallet.address,
-                    email: wallet.email,
-                    publicKey: wallet.publicKey
-                },
-                sessionId
-            });
-
-            // Render HTML for browser requests
-            if (req.accepts('html')) {
-                return res.render('google-success', {
-                    wallet: {
-                        address: wallet.address,
-                        email: wallet.email,
-                        publicKey: wallet.publicKey
-                    },
-                    sessionId
-                });
-            }
-
-            // Keep JSON response for API clients
-            ResponseHandler.success(res, {
-                message: 'Google authentication successful',
-                wallet: {
-                    address: wallet.address,
-                    email: wallet.email,
-                    publicKey: wallet.publicKey
-                },
-                sessionId
-            });
-        } catch (error) {
-            next(error);
-        }
+    (req: Request, res: Response) => {
+        console.log('Successful authentication, user:', req.user);
+        res.json({ success: true, user: req.user });
     }
 );
 

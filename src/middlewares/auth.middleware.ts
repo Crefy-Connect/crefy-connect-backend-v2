@@ -38,6 +38,7 @@ export async function authenticateDeveloper(
 ) {
     try {
         const token = req.headers['authorization']?.split(' ')[1];
+        console.log("TOKEN: ", token);
         if (!token) {
             throw new ApiError(401, "Authorization token required");
         }
@@ -47,6 +48,7 @@ export async function authenticateDeveloper(
         if (!decoded?.id) {
             throw new ApiError(401, "Invalid token");
         }
+
 
         // Check if developer exists and is active
         const developer = await Developer.findById(decoded.id);
@@ -176,6 +178,7 @@ export const handleGoogleAuthSession = async (req: Request, res: Response, next:
 
         // Attach session ID to the request and response
         (req as any).sessionId = sessionId;
+        console.log("SESSION ID: ", sessionId)
         res.locals.sessionId = sessionId;
 
         next();

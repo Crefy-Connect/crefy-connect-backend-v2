@@ -1,6 +1,6 @@
 import { Document, Schema, model } from "mongoose";
 
-interface IWallet extends Document {
+export interface IWallet extends Document {
     appId: string;
     email: string;
     socialType: string;
@@ -14,6 +14,10 @@ interface IWallet extends Document {
     isActive: boolean;
     otp: string;
     otpExpiry: Date;
+    oauthTokens?: {
+        accessToken?: string;
+        refreshToken?: string;
+    };
 }
 
 const WalletSchema = new Schema<IWallet>({
@@ -30,6 +34,10 @@ const WalletSchema = new Schema<IWallet>({
     otp: { type: String, required: false },
     otpExpiry: { type: Date, required: false },
     updatedAt: { type: Date, default: Date.now },
+    oauthTokens: {
+        accessToken: { type: String },
+        refreshToken: { type: String }
+    },
 });
 
 WalletSchema.index({ appId: 1, address: 1 }, { unique: true });

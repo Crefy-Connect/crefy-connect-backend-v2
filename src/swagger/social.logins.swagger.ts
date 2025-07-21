@@ -454,15 +454,23 @@ export const socialLoginsSwagger = {
             },
         },
 
-        "/oauth/google/initiate-google-auth": {
+        "/oauth/google/:appId/initiate-google-auth": {
             get: {
                 summary: "Initiate Google OAuth flow",
                 description: `
                     Redirects the user to Google's OAuth consent screen.
-                    Requires x-api-key header.
+                    Requires appId as a path parameter.
                 `,
                 tags: ["Social Authentication"],
-                security: [{ ApiKeyAuth: [] }],
+                parameters: [
+                    {
+                        in: "path",
+                        name: "appId",
+                        required: true,
+                        schema: { type: "string" },
+                        description: "Unique application ID for identifying the client app"
+                    }
+                ],
                 responses: {
                     "302": {
                         description: "Redirect to Google OAuth consent screen",

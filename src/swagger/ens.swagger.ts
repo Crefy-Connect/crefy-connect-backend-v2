@@ -10,6 +10,75 @@ export const ensSwagger = {
     ],
     components: {
         schemas: {
+            PrepareSubnameRegistrarRequest: {
+                type: "object",
+                required: ["ensName", "chain"],
+                properties: {
+                    ensName: {
+                        type: "string",
+                        example: "myplatform.eth",
+                        description: "ENS root name to create registrar for (must end with .eth)"
+                    },
+                    chain: {
+                        type: "string",
+                        enum: ["ethereum", "sepolia", "goerli"],
+                        example: "sepolia",
+                        description: "Blockchain network"
+                    }
+                },
+                additionalProperties: false
+            },
+
+            PrepareSubnameRegistrarResponse: {
+                type: "object",
+                properties: {
+                    success: {
+                        type: "boolean",
+                        example: true
+                    },
+                    message: {
+                        type: "string",
+                        example: "Transaction prepared successfully"
+                    },
+                    data: {
+                        type: "object",
+                        properties: {
+                            to: {
+                                type: "string",
+                                example: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                description: "Contract address to send transaction to"
+                            },
+                            data: {
+                                type: "string",
+                                example: "0x123...abc",
+                                description: "Encoded transaction data"
+                            },
+                            value: {
+                                type: "string",
+                                example: "0",
+                                description: "Value to send with transaction (in wei)"
+                            },
+                            gas: {
+                                type: "string",
+                                example: "500000",
+                                description: "Estimated gas limit"
+                            },
+                            from: {
+                                type: "string",
+                                example: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                description: "Sender address"
+                            },
+                            chainId: {
+                                type: "number",
+                                example: 11155111,
+                                description: "Chain ID for the transaction"
+                            }
+                        },
+                        required: ["to", "data", "from", "chainId"]
+                    }
+                },
+                required: ["success", "message", "data"]
+            },
             // Request Schemas
             ENSRegisterRequest: {
                 type: "object",
@@ -284,6 +353,97 @@ export const ensSwagger = {
     },
 
     paths: {
+        "/ens/prepare-registrar": {
+            post: {
+                summary: "Prepare transaction to create subname registrar contract. (Dashboard)",
+                description: "Prepares a transaction to create a new subname registrar contract for the given ENS name. Returns the transaction data that can be signed by the frontend. Requires developer authentication and valid API key.",
+                tags: ["ENS"],
+                security: [
+                    { ApiKeyAuth: [] },
+                    { BearerAuth: [] }
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/PrepareSubnameRegistrarRequest" }
+                        }
+                    }
+                },
+                responses: {
+                    "200": {
+                        description: "Transaction prepared successfully",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/PrepareSubnameRegistrarResponse" },
+                                examples: {
+                                    success: {
+                                        value: {
+                                            success: true,
+                                            message: "Transaction prepared successfully",
+                                            data: {
+                                                to: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                data: "0x123...abc",
+                                                value: "0",
+                                                gas: "500000",
+                                                from: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                chainId: 11155111
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        description: "Validation error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    invalidName: {
+                                        value: {
+                                            success: false,
+                                            message: "ENS name must be a valid string"
+                                        }
+                                    },
+                                    missingFields: {
+                                        value: {
+                                            success: false,
+                                            message: "ENS name and chain are required"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        description: "Unauthorized - Invalid credentials",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "404": {
+                        description: "ENS root not found for this app",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "500": {
+                        description: "Internal server error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/ens/roots": {
             post: {
                 summary: "Register a new ENS root domain. (Dashboard)",
@@ -362,6 +522,78 @@ export const ensSwagger = {
                                 example: {
                                     success: false,
                                     message: "ENS root already registered"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        description: "Internal server error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+
+        "/ens/name": {
+            get: {
+                summary: "Get ENS root name for the current app. (Dashboard)",
+                description: "Returns the ENS root name, contract address, and status for the current app. Requires API key and developer authentication.",
+                tags: ["ENS"],
+                security: [
+                    { ApiKeyAuth: [] },
+                    { BearerAuth: [] }
+                ],
+                responses: {
+                    "200": {
+                        description: "ENS root name found",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        success: { type: "boolean", example: true },
+                                        data: {
+                                            type: "object",
+                                            properties: {
+                                                ensName: { type: "string", example: "myplatform.eth" },
+                                                contractAddress: { type: "string", example: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e" },
+                                                isActive: { type: "boolean", example: true }
+                                            }
+                                        }
+                                    },
+                                    required: ["success", "data"]
+                                },
+                                examples: {
+                                    found: {
+                                        value: {
+                                            success: true,
+                                            data: {
+                                                ensName: "myplatform.eth",
+                                                contractAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                isActive: true
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        description: "No ENS root registered for this app",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    notFound: {
+                                        value: {
+                                            success: false,
+                                            message: "No ENS root registered for this app"
+                                        }
+                                    }
                                 }
                             }
                         }

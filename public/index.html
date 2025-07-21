@@ -2,533 +2,235 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Google OAuth with Socket.IO Client</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <meta charset="UTF-8" />
+    <title>Test ENS Subname Registrar</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: Arial, sans-serif;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            line-height: 1.6;
-            background-color: #f8f9fa;
-            color: #333;
         }
 
-        .container {
-            background: #ffffff;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
-            margin-top: 20px;
-        }
-
-        h1 {
-            color: #1a73e8;
-            text-align: center;
-            margin-bottom: 30px;
-            font-weight: 600;
-            font-size: 28px;
-        }
-
-        .instructions {
-            background-color: #e8f4fd;
-            border-left: 4px solid #1a73e8;
-            padding: 20px;
-            margin-bottom: 25px;
-            border-radius: 8px;
-            font-size: 16px;
-            line-height: 1.7;
-        }
-
-        button {
-            background-color: #1a73e8;
-            color: white;
-            border: none;
-            padding: 14px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 18px;
-            font-weight: 500;
-            margin: 20px 0;
-            display: block;
-            width: 100%;
-            transition: all 0.3s ease;
-            box-shadow: 0 2px 5px rgba(26, 115, 232, 0.3);
-        }
-
-        button:hover {
-            background-color: #0d62c9;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(26, 115, 232, 0.4);
-        }
-
-        button:active {
-            transform: translateY(0);
-        }
-
-        .status-container {
-            margin: 25px 0;
-            padding: 0;
-        }
-
-        #status {
-            padding: 18px;
-            border-radius: 8px;
-            display: none;
-            margin-bottom: 20px;
-            font-size: 16px;
-            text-align: center;
-        }
-
-        .success {
-            background-color: #e6f7ee;
-            color: #0f9d58;
-            border: 1px solid #a8e6bf;
-        }
-
-        .error {
-            background-color: #fce8e6;
-            color: #d93025;
-            border: 1px solid #f4b6b0;
-        }
-
-        .info {
-            background-color: #e8f0fe;
-            color: #1a73e8;
-            border: 1px solid #bbd3fa;
-        }
-
-        .wallet-info {
-            margin-top: 30px;
-            padding: 25px;
-            background-color: #f1f8ff;
-            border-radius: 10px;
-            display: none;
-            border-left: 4px solid #1a73e8;
-        }
-
-        .wallet-info h3 {
-            color: #1a73e8;
-            margin-top: 0;
-            font-size: 22px;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #d1e3f8;
-            padding-bottom: 10px;
-        }
-
-        .wallet-info p {
-            margin: 15px 0;
-            font-size: 17px;
-        }
-
-        .wallet-info span {
-            font-weight: 500;
-            color: #0d47a1;
-        }
-
-        .log-container {
-            margin-top: 35px;
-            padding: 20px;
-            background: linear-gradient(145deg, #2d3748, #1a202c);
-            color: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        .log-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .log-header h3 {
-            margin: 0;
-            color: #63b3ed;
-            font-size: 20px;
-        }
-
-        #connectionLog {
-            max-height: 250px;
-            overflow-y: auto;
-            font-family: 'Fira Code', 'Courier New', monospace;
-            font-size: 15px;
-            background-color: rgba(0, 0, 0, 0.2);
-            padding: 15px;
-            border-radius: 8px;
-            line-height: 1.8;
-        }
-
-        .log-entry {
-            margin-bottom: 10px;
-            padding: 8px 12px;
+        #providerStatus {
+            margin: 10px 0;
+            padding: 8px;
             border-radius: 4px;
-            background-color: rgba(255, 255, 255, 0.05);
         }
 
-        #popupStatus {
-            margin-top: 20px;
-            font-size: 16px;
-            color: #5f6368;
-            text-align: center;
-            font-style: italic;
-            padding: 12px;
-            background-color: #f8f9fa;
-            border-radius: 8px;
+        .status-pending {
+            background-color: #fff3cd;
+            color: #856404;
         }
 
-        .loader {
-            display: none;
-            text-align: center;
-            margin: 25px 0;
+        .status-error {
+            background-color: #f8d7da;
+            color: #721c24;
         }
 
-        .loader .spinner {
-            border: 5px solid rgba(26, 115, 232, 0.2);
-            border-radius: 50%;
-            border-top: 5px solid #1a73e8;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
+        .status-success {
+            background-color: #d4edda;
+            color: #155724;
         }
 
-        .loader p {
-            font-size: 18px;
-            color: #1a73e8;
-            font-weight: 500;
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        .google-icon {
-            vertical-align: middle;
-            margin-right: 12px;
-            width: 24px;
-            height: 24px;
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <h1>Google OAuth Authentication</h1>
+    <h2>Prepare Subname Registrar Transaction</h2>
 
-        <div class="instructions">
-            <p>This demo securely connects to Google using OAuth 2.0 and Socket.IO for real-time communication. When you
-                click the button below:</p>
-            <ol>
-                <li>A popup window will open for Google authentication</li>
-                <li>Complete the Google sign-in process in the popup</li>
-                <li>Authentication status will appear here when complete</li>
-                <li>Wallet information will be displayed upon success</li>
-            </ol>
-            <p><strong>Note:</strong> Please allow popups for this site to use the popup authentication flow.</p>
-        </div>
+    <button id="connectButton">Connect Wallet</button>
+    <button id="reconnectButton" style="display: none;">Complete Pending Connection</button>
+    <p id="walletAddress" style="font-weight: bold;"></p>
+    <div id="providerStatus">Checking for MetaMask...</div>
 
-        <div id="authSection">
-            <button id="googleAuthBtn">
-                <svg class="google-icon" viewBox="0 0 24 24">
-                    <path fill="#ffffff"
-                        d="M12.24 10.285V14.4h6.806c-.275 1.765-2.056 5.174-6.806 5.174-4.095 0-7.439-3.389-7.439-7.574s3.345-7.574 7.439-7.574c2.33 0 3.891.989 4.785 1.849l3.254-3.138C18.189 1.186 15.479 0 12.24 0c-6.635 0-12 5.365-12 12s5.365 12 12 12c6.926 0 11.52-4.869 11.52-11.726 0-.788-.085-1.39-.189-1.989H12.24z" />
-                </svg>
-                Sign in with Google
-            </button>
-            <div id="popupStatus">Click the button to open Google authentication</div>
-            <div class="loader" id="loader">
-                <div class="spinner"></div>
-                <p>Processing authentication...</p>
-            </div>
-        </div>
+    <form id="ensForm">
+        <label>ENS Name: <input type="text" id="ensName" value="myname" required /></label><br><br>
+        <label>Chain: <input type="text" id="chain" value="sepolia" required /></label><br><br>
+        <input type="hidden" id="from" />
+        <button type="submit" id="submitButton" disabled>Prepare Transaction</button>
+    </form>
 
-        <div class="status-container">
-            <div id="status"></div>
-        </div>
-
-        <div class="wallet-info" id="walletInfo">
-            <h3>Wallet Information</h3>
-            <p><strong>Address:</strong> <span id="walletAddress"></span></p>
-            <p><strong>Email:</strong> <span id="walletEmail"></span></p>
-            <p><strong>Public Key:</strong> <span id="walletPublicKey"></span></p>
-        </div>
-
-        <div class="log-container">
-            <div class="log-header">
-                <h3>Connection Log</h3>
-                <button id="clearLogBtn"
-                    style="width: auto; padding: 8px 16px; font-size: 15px; background: #4a5568;">Clear Log</button>
-            </div>
-            <div id="connectionLog"></div>
-        </div>
-    </div>
+    <pre id="result" style="margin-top: 20px; white-space: pre-wrap;"></pre>
 
     <script>
-        // Configuration
-        const config = {
-            serverUrl: 'https://mutually-factual-weevil.ngrok-free.app',
-            appId: 'c611fc769a5e62517056718d0282b320a07a4ca6792ce459db2220c3892fe984'
-        };
+        let currentAccount = null;
+        let isConnecting = false;
+        const connectButton = document.getElementById("connectButton");
+        const reconnectButton = document.getElementById("reconnectButton");
+        const walletDisplay = document.getElementById("walletAddress");
+        const providerStatus = document.getElementById("providerStatus");
+        const submitButton = document.getElementById("submitButton");
 
-        // DOM elements
-        const elements = {
-            googleAuthBtn: document.getElementById('googleAuthBtn'),
-            statusDiv: document.getElementById('status'),
-            walletInfoDiv: document.getElementById('walletInfo'),
-            walletAddressSpan: document.getElementById('walletAddress'),
-            walletEmailSpan: document.getElementById('walletEmail'),
-            walletPublicKeySpan: document.getElementById('walletPublicKey'),
-            connectionLog: document.getElementById('connectionLog'),
-            popupStatus: document.getElementById('popupStatus'),
-            loader: document.getElementById('loader'),
-            clearLogBtn: document.getElementById('clearLogBtn')
-        };
+        // Improved provider detection
+        async function detectProvider() {
+            // Modern detection method
+            if (window.ethereum) {
+                // Check specifically for MetaMask
+                if (window.ethereum.isMetaMask) {
+                    return window.ethereum;
+                }
 
-        // Session management
-        const sessionId = generateSessionId();
-        let socket = null;
-        let authPopup = null;
-        let popupCheckInterval = null;
-        let authSuccessReceived = false;
-        let popupRedirectedToGoogle = false;
-        let authTimeout = null;
+                // Some wallets might not have isMetaMask but are MetaMask
+                try {
+                    const providers = window.ethereum.providers;
+                    if (Array.isArray(providers)) {
+                        const mmProvider = providers.find(p => p.isMetaMask);
+                        if (mmProvider) return mmProvider;
+                    }
+                    return window.ethereum;
+                } catch (e) {
+                    return window.ethereum;
+                }
+            }
 
-        // Initialize when DOM is loaded
-        document.addEventListener('DOMContentLoaded', function () {
-            logMessage('Page loaded. Session ID: ' + sessionId);
-            initializeSocketConnection();
+            // Legacy detection
+            if (window.web3 && window.web3.currentProvider) {
+                return window.web3.currentProvider;
+            }
 
-            elements.googleAuthBtn.addEventListener('click', initiateGoogleAuth);
-            elements.clearLogBtn.addEventListener('click', clearConnectionLog);
+            return null;
+        }
 
-            // Check if we're returning from OAuth (for redirect flow)
-            checkForOAuthResponse();
+        function updateStatus(message, type = 'info') {
+            providerStatus.textContent = message;
+            providerStatus.className = '';
+
+            switch (type) {
+                case 'error':
+                    providerStatus.classList.add('status-error');
+                    break;
+                case 'success':
+                    providerStatus.classList.add('status-success');
+                    break;
+                case 'pending':
+                    providerStatus.classList.add('status-pending');
+                    break;
+                default:
+                    // No additional class for info
+                    break;
+            }
+        }
+
+        // Check provider on load
+        window.addEventListener('load', async () => {
+            const provider = await detectProvider();
+            if (!provider) {
+                updateStatus("MetaMask not detected. Please install MetaMask or ensure it's enabled.", 'error');
+                connectButton.disabled = true;
+            } else {
+                updateStatus("MetaMask detected! Click 'Connect Wallet' to continue.", 'success');
+
+                // Listen for account changes
+                provider.on('accountsChanged', (accounts) => {
+                    if (accounts.length === 0) {
+                        walletDisplay.textContent = "";
+                        updateStatus("Wallet disconnected", 'error');
+                        currentAccount = null;
+                        submitButton.disabled = true;
+                    } else {
+                        currentAccount = accounts[0];
+                        walletDisplay.textContent = `Connected Wallet: ${currentAccount}`;
+                        document.getElementById("from").value = currentAccount;
+                        updateStatus("Wallet connected", 'success');
+                        submitButton.disabled = false;
+                    }
+                });
+
+                // Listen for chain changes
+                provider.on('chainChanged', () => {
+                    window.location.reload(); // Recommended by MetaMask docs
+                });
+            }
         });
 
-        function generateSessionId() {
-            return 'session-' + Math.random().toString(36).substring(2, 15) +
-                Math.random().toString(36).substring(2, 15);
-        }
+        connectButton.addEventListener("click", async () => {
+            if (isConnecting) return;
+            isConnecting = true;
+            connectButton.disabled = true;
+            reconnectButton.style.display = "none";
 
-        function initializeSocketConnection() {
-            logMessage('Connecting to Socket.IO server...');
-            showLoader();
-
-            socket = io(config.serverUrl, {
-                reconnection: true,
-                reconnectionAttempts: 10,
-                reconnectionDelay: 3000,
-                transports: ['websocket'],
-                auth: {
-                    sessionId: sessionId
+            try {
+                const provider = await detectProvider();
+                if (!provider) {
+                    updateStatus("MetaMask is not installed. Please install it to use this feature.", 'error');
+                    return;
                 }
-            });
 
-            // Socket.IO event handlers
-            socket.on('connect', () => {
-                logMessage('Socket.IO connected with ID: ' + socket.id);
-                socket.emit('register-session', sessionId);
-                logMessage('Registered session with server: ' + sessionId);
-                hideLoader();
-            });
+                updateStatus("Connecting to MetaMask...", 'pending');
+                const accounts = await provider.request({ method: 'eth_requestAccounts' });
 
-            socket.on('connect_error', (error) => {
-                logMessage('Socket.IO connection error: ' + error.message, 'error');
-                hideLoader();
-            });
+                currentAccount = accounts[0];
+                walletDisplay.textContent = `Connected Wallet: ${currentAccount}`;
+                document.getElementById("from").value = currentAccount;
+                updateStatus("Connected successfully!", 'success');
+                submitButton.disabled = false;
 
-            socket.on('disconnect', (reason) => {
-                logMessage('Socket.IO disconnected: ' + reason, 'error');
-            });
+            } catch (error) {
+                if (error.code === -32002) { // MetaMask's "already pending" error code
+                    updateStatus("Please complete the connection in MetaMask", 'pending');
+                    reconnectButton.style.display = "inline-block";
+                    // Show notification to check MetaMask extension
+                    alert("Please check your MetaMask extension to complete the connection");
+                } else {
+                    console.error("Connection error:", error);
+                    updateStatus(`Connection error: ${error.message || "Please try again"}`, 'error');
+                }
+            } finally {
+                isConnecting = false;
+                connectButton.disabled = false;
+            }
+        });
 
-            socket.on('google-auth-success', (data) => {
-                authSuccessReceived = true;
-                clearTimeout(authTimeout);
-                handleAuthSuccess(data);
-            });
-        }
+        reconnectButton.addEventListener("click", async () => {
+            reconnectButton.style.display = "none";
+            connectButton.click(); // Retry the connection
+        });
 
-        function initiateGoogleAuth() {
-            // Reset flags and UI
-            authSuccessReceived = false;
-            popupRedirectedToGoogle = false;
-            hideWalletInfo();
-            showStatus('', '');
-            showLoader();
+        document.getElementById("ensForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-            logMessage('Initiating Google OAuth flow in popup...');
-            showStatus('Opening Google authentication popup...', 'info');
-
-            // Calculate popup position
-            const width = 500;
-            const height = 650;
-            const left = (window.screen.width - width) / 2;
-            const top = (window.screen.height - height) / 2;
-
-            // Open popup window with your server's endpoint
-            const popupUrl = `${config.serverUrl}/api/v1/oauth/google/${config.appId}/initiate-google-auth?state=${sessionId}`;
-            authPopup = window.open(
-                popupUrl,
-                'googleAuthPopup',
-                `width=${width},height=${height},top=${top},left=${left},resizable=yes,scrollbars=yes`
-            );
-
-            if (!authPopup) {
-                showStatus('Popup blocked! Please allow popups for this site.', 'error');
-                logMessage('Popup window was blocked by browser', 'error');
-                hideLoader();
-
-                // Fallback to redirect if popup blocked
-                setTimeout(() => {
-                    showStatus('Falling back to page redirect...', 'info');
-                    window.location.href = popupUrl;
-                }, 2000);
+            if (!currentAccount) {
+                updateStatus("Please connect your wallet first", 'error');
                 return;
             }
 
-            elements.popupStatus.textContent = 'Popup window opened. Please complete authentication in the popup.';
+            const ensName = document.getElementById("ensName").value;
+            const chain = document.getElementById("chain").value;
+            const from = document.getElementById("from").value;
 
-            // Start authentication timeout
-            authTimeout = setTimeout(() => {
-                if (!authSuccessReceived) {
-                    showStatus('Authentication timed out. Please try again.', 'error');
-                    logMessage('Authentication timed out', 'error');
-                    hideLoader();
-                    clearPopupChecker();
-                }
-            }, 300000); // 5 minutes
-            console.log(authPopup.location)
+            updateStatus("Preparing transaction...", 'pending');
+            submitButton.disabled = true;
 
+            try {
+                const response = await fetch("http://localhost:8002/api/v1/ens/prepare-subname-registrar", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NjE3NDI4NTU1YWJmYTExNGI3MzllNSIsImlhdCI6MTc1MzA5MDA5NSwiZXhwIjoxNzUzMTc2NDk1fQ.gieqckkDdCrST6Ep1tRwMb9IHbsf0ApZUc44BQbCWck"
+                    },
+                    body: JSON.stringify({
+                        ensName,
+                        chain,
+                        from
+                    })
+                });
 
-            // Start popup monitoring
-            popupCheckInterval = setInterval(() => {
-                try {
-                    // This will throw an error when the popup redirects to Google's domain
-                    if (authPopup.closed) {
-                        console.log(authPopup.location)
-                        clearPopupChecker();
-                        elements.popupStatus.textContent = 'Popup window was closed.';
-
-                        if (!authSuccessReceived && !popupRedirectedToGoogle) {
-                            hideLoader();
-                            showStatus('Authentication was canceled.', 'error');
-                            logMessage('Authentication canceled by user', 'error');
-                        }
-                    } else {
-                        // Try to detect if popup has redirected to Google
-                        if (authPopup.location.href.includes('accounts.google.com')) {
-                            popupRedirectedToGoogle = true;
-                            elements.popupStatus.textContent = 'Redirected to Google. Please complete authentication.';
-                            logMessage('Popup redirected to Google authentication page');
-                        }
-                    }
-                } catch (e) {
-                    // This error occurs when we can't access the popup's location (cross-origin)
-                    if (!popupRedirectedToGoogle) {
-                        popupRedirectedToGoogle = true;
-                        elements.popupStatus.textContent = 'Redirected to Google. Please complete authentication.';
-                        logMessage('Popup redirected to external authentication page');
-                    }
-                }
-            }, 10000);
-        }
-
-        function clearPopupChecker() {
-            if (popupCheckInterval) {
-                clearInterval(popupCheckInterval);
-                popupCheckInterval = null;
+                const result = await response.json();
+                document.getElementById("result").textContent = JSON.stringify(result, null, 2);
+                updateStatus("Transaction prepared successfully!", 'success');
+            } catch (error) {
+                console.error("Fetch error:", error);
+                document.getElementById("result").textContent = "Error: " + error.message;
+                updateStatus("Failed to prepare transaction", 'error');
+            } finally {
+                submitButton.disabled = false;
             }
-        }
-
-        function handleAuthSuccess(data) {
-            logMessage('Google authentication successful!', 'success');
-            showStatus('Google authentication successful!', 'success');
-            hideLoader();
-
-            // Display wallet information
-            elements.walletAddressSpan.textContent = data.wallet.address || 'N/A';
-            elements.walletEmailSpan.textContent = data.wallet.email || 'N/A';
-            elements.walletPublicKeySpan.textContent = data.wallet.publicKey || 'N/A';
-            elements.walletInfoDiv.style.display = 'block';
-
-            logMessage('Received wallet data: ' + JSON.stringify(data.wallet));
-
-            // Clean up
-            clearPopupChecker();
-
-            if (authPopup && !authPopup.closed) {
-                try {
-                    authPopup.close();
-                } catch (e) {
-                    // Ignore errors when closing cross-origin windows
-                }
-            }
-        }
-
-        function showLoader() {
-            elements.loader.style.display = 'block';
-        }
-
-        function hideLoader() {
-            elements.loader.style.display = 'none';
-        }
-
-        function hideWalletInfo() {
-            elements.walletInfoDiv.style.display = 'none';
-        }
-
-        function showStatus(message, type) {
-            elements.statusDiv.textContent = message;
-            elements.statusDiv.className = type;
-            elements.statusDiv.style.display = message ? 'block' : 'none';
-        }
-
-        function logMessage(message, type = 'info') {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString();
-            const logEntry = document.createElement('div');
-            logEntry.className = 'log-entry';
-
-            logEntry.textContent = `[${timeString}] ${message}`;
-
-            if (type === 'error') {
-                logEntry.style.color = '#fc8181';
-            } else if (type === 'success') {
-                logEntry.style.color = '#68d391';
-            } else {
-                logEntry.style.color = '#a0aec0';
-            }
-
-            elements.connectionLog.appendChild(logEntry);
-            elements.connectionLog.scrollTop = elements.connectionLog.scrollHeight;
-        }
-
-        function clearConnectionLog() {
-            elements.connectionLog.innerHTML = '';
-            logMessage('Log cleared');
-        }
-
-        function checkForOAuthResponse() {
-            const urlParams = new URLSearchParams(window.location.search);
-
-            if (urlParams.has('error')) {
-                const error = urlParams.get('error');
-                const errorDescription = urlParams.get('error_description');
-                showStatus(`Google authentication failed: ${error} - ${errorDescription}`, 'error');
-                logMessage(`OAuth error: ${error} - ${errorDescription}`, 'error');
-                window.history.replaceState({}, document.title, window.location.pathname);
-            }
-        }
+        });
     </script>
 </body>
 

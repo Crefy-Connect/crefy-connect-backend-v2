@@ -41,7 +41,7 @@ interface TransactionResult {
     gasUsed: bigint;
     effectiveGasPrice: bigint;
     estimatedGas: bigint;
-    estimatedCost: bigint;
+    estimatedCost: number;
     chainId: number;
 }
 
@@ -66,11 +66,11 @@ interface ErrorResponse {
 class ENSL1SubnameRegistrarService {
     private readonly contractAddress: Address;
     private readonly contractABI: Abi;
-    private publicClient: PublicClient;
+    private publicClient!: PublicClient;
     private account: Account;
     private aaService: AccountAbstractionService;
     private chain: Chain;
-    private walletClient: WalletClient;
+    private walletClient!: WalletClient;
 
     constructor(chainName: string, privateKey: string, contractAddress: Address) {
         this.contractAddress = contractAddress;
@@ -310,13 +310,13 @@ class ENSL1SubnameRegistrarService {
             gasUsed: receipt.gasUsed,
             effectiveGasPrice: receipt.effectiveGasPrice,
             estimatedGas: gasEstimate,
-            estimatedCost,
+            estimatedCost: Number(estimatedCost),
             chainId: this.chain.id,
         };
     }
 
     private async aaWriteContract(functionName: string, args: any[]): Promise<TransactionResult> {
-        const response = await this.aaService.executeContractFunction({
+        const response: any = await this.aaService.executeContractFunction({
             contractAddress: this.contractAddress,
             abi: this.contractABI,
             functionName,
@@ -331,7 +331,7 @@ class ENSL1SubnameRegistrarService {
             gasUsed: response.gasUsed,
             effectiveGasPrice: response.effectiveGasPrice,
             estimatedGas: response.gasLimit,
-            estimatedCost: response.gasLimit * response.gasPrice,
+            estimatedCost: Number(response.gasLimit * response.gasPrice),
             chainId: this.chain.id,
         };
     }

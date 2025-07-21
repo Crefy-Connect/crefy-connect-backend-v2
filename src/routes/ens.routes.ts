@@ -6,12 +6,26 @@ import ENSController from "../controllers/ens.controller.js"; // Updated import
 const router = Router();
 const controller = new ENSController();
 
-// Register ENS Root
+router.post(
+    "/prepare-registrar",
+    validateApiKeyMiddleware as RequestHandler,
+    authenticateDeveloper as RequestHandler,
+    controller.prepareCreateSubnameRegistrar.bind(controller) as unknown as RequestHandler
+);
+
 router.post(
     "/roots",
     validateApiKeyMiddleware as RequestHandler,
     authenticateDeveloper as RequestHandler,
     controller.registerRoot.bind(controller) as unknown as RequestHandler
+);
+
+// Add GET /ens/name route
+router.get(
+    "/name",
+    validateApiKeyMiddleware as RequestHandler,
+    authenticateDeveloper as RequestHandler,
+    controller.getENSName.bind(controller) as unknown as RequestHandler
 );
 
 router.get(
@@ -27,5 +41,6 @@ router.post(
     checkWalletAuthenticated as RequestHandler,
     controller.claimSubname.bind(controller) as unknown as RequestHandler
 );
+
 
 export default router;

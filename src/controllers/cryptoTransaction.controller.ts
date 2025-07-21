@@ -317,6 +317,7 @@ export class CryptoTransactionController {
                 },
                 mode
             )
+            console.log(result)
 
             if (result.error) {
                 if (result.error.message.includes('AA33 reverted')) {

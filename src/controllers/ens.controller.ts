@@ -5,6 +5,9 @@ import { ChainUtils } from "../config/chains.config.js";
 import { Wallet } from "../models/wallet.models.js";
 import { HttpStatus } from "../utils/httpStatus.js";
 import { ENSRoot } from "../models/ensroot.models.js";
+import { Web3Service } from "../services/web3.service.js";
+import { contract_config } from "src/config/index.js";
+
 
 export default class ENSController {
     /**
@@ -96,6 +99,44 @@ export default class ENSController {
             });
         } catch (error: any) {
             logger.error(`Error in registerRoot: ${error.message}`);
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    /**
+ * @api {get} /ens/name Get ENS Name
+ * @apiName GetENSName
+ * @apiGroup ENS
+ * @apiDescription Get the ENS root name associated with the current app
+ */
+    public async getENSName(req: Request, res: Response) {
+        try {
+            const { appId } = (req as any).developer_app;
+
+            // Find the ENS root for this app
+            const ensRoot = await ENSRoot.findOne({ ownerAppId: appId });
+
+            if (!ensRoot) {
+                return res.status(HttpStatus.NOT_FOUND).json({
+                    success: false,
+                    message: "No ENS root registered for this app"
+                });
+            }
+
+            return res.status(HttpStatus.OK).json({
+                success: true,
+                data: {
+                    ensName: ensRoot.ens_name,
+                    contractAddress: ensRoot.contractAddress,
+                    isActive: ensRoot.isActive
+                }
+            });
+
+        } catch (error: any) {
+            logger.error(`Error in getENSName: ${error.message}`);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
                 success: false,
                 message: error.message
@@ -224,4 +265,61 @@ export default class ENSController {
             });
         }
     }
+
+    public async prepareCreateSubnameRegistrar(req: Request, res: Response) {
+        try {
+            const { id: userID } = (req as any).user;
+            const { ensName, chain, from } = req.body;
+            const { appId } = (req as any).developer_app;
+
+            if (!ensName || !chain) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: "ENS name and chain are required"
+                });
+            }
+
+            // Find the ENS root contract for the developer's app
+            const ensRoot = await ENSRoot.findOne({ ownerAppId: appId });
+            if (!ensRoot) {
+                return res.status(HttpStatus.NOT_FOUND).json({
+                    success: false,
+                    message: "ENS root not found for this app"
+                });
+            }
+
+            // Initialize Web3 service (only handles data preparation)
+            const web3Service = new Web3Service(chain);
+
+            // Prepare the transaction call data
+            const preparedTx = await web3Service.prepareENSRegistrarCreation(
+                ensRoot.contractAddress as `0x${string}`,
+                contract_config.ENS_FACTORY_CONTRACT_ABI,
+                ensName,
+                from // Optional from address (for gas estimation)
+            );
+
+            return res.status(HttpStatus.OK).json({
+                success: true,
+                message: "Transaction prepared successfully",
+                data: preparedTx
+            });
+
+        } catch (error: any) {
+            logger.error(`Error in prepareCreateSubnameRegistrar: ${error.message}`);
+
+            if (error.message.includes("ENS name must be a valid string")) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
 }

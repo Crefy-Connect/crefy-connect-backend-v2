@@ -79,6 +79,94 @@ export const ensSwagger = {
                 },
                 required: ["success", "message", "data"]
             },
+
+            NameWrapperTransferRequest: {
+                type: "object",
+                required: ["chain", "from", "to", "id"],
+                properties: {
+                    chain: {
+                        type: "string",
+                        enum: ["ethereum", "sepolia", "goerli"],
+                        example: "sepolia",
+                        description: "Blockchain network"
+                    },
+                    from: {
+                        type: "string",
+                        pattern: "^0x[a-fA-F0-9]{40}$",
+                        example: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                        description: "Current owner of the wrapped name"
+                    },
+                    to: {
+                        type: "string",
+                        pattern: "^0x[a-fA-F0-9]{40}$",
+                        example: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                        description: "New owner of the wrapped name"
+                    },
+                    id: {
+                        type: "string",
+                        example: "1234567890123456789",
+                        description: "NameWrapper token ID (namehash of the ENS name)"
+                    },
+                    amount: {
+                        type: "string",
+                        example: "1",
+                        description: "Amount to transfer (default: 1)"
+                    },
+                    data: {
+                        type: "string",
+                        example: "0x",
+                        description: "Additional data (default: empty bytes)"
+                    }
+                },
+                additionalProperties: false
+            },
+
+            NameWrapperTransferResponse: {
+                type: "object",
+                properties: {
+                    success: {
+                        type: "boolean",
+                        example: true
+                    },
+                    message: {
+                        type: "string",
+                        example: "NameWrapper transfer transaction prepared successfully"
+                    },
+                    data: {
+                        type: "object",
+                        properties: {
+                            to: {
+                                type: "string",
+                                example: "0x1234567890abcdef1234567890abcdef12345678",
+                                description: "NameWrapper contract address"
+                            },
+                            data: {
+                                type: "string",
+                                example: "0x123...abc",
+                                description: "Encoded transfer transaction data"
+                            },
+                            value: {
+                                type: "string",
+                                example: "0",
+                                description: "Value to send (default: 0)"
+                            },
+                            gas: {
+                                type: "string",
+                                example: "50000",
+                                description: "Estimated gas limit"
+                            },
+                            chainId: {
+                                type: "number",
+                                example: 11155111,
+                                description: "Chain ID"
+                            }
+                        },
+                        required: ["to", "data", "chainId"]
+                    }
+                },
+                required: ["success", "message", "data"]
+            },
+
             // Request Schemas
             ENSRegisterRequest: {
                 type: "object",
@@ -427,6 +515,88 @@ export const ensSwagger = {
                     },
                     "404": {
                         description: "ENS root not found for this app",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "500": {
+                        description: "Internal server error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/ens/namewrapper/prepare-transfer": {
+            post: {
+                summary: "Prepare NameWrapper transfer transaction",
+                description: "Prepares a safeTransferFrom transaction for transferring wrapped ENS names between addresses. Returns encoded transaction data that can be signed and submitted by the client.",
+                tags: ["ENS"],
+                security: [
+                    { ApiKeyAuth: [] },
+                    { BearerAuth: [] }
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/NameWrapperTransferRequest" }
+                        }
+                    }
+                },
+                responses: {
+                    "200": {
+                        description: "Transaction prepared successfully",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/NameWrapperTransferResponse" },
+                                examples: {
+                                    success: {
+                                        value: {
+                                            success: true,
+                                            message: "NameWrapper transfer transaction prepared successfully",
+                                            data: {
+                                                to: "0x1234567890abcdef1234567890abcdef12345678",
+                                                data: "0x123...abc",
+                                                value: "0",
+                                                gas: "50000",
+                                                chainId: 11155111
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        description: "Validation error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    invalidAddress: {
+                                        value: {
+                                            success: false,
+                                            message: "Invalid from or to address"
+                                        }
+                                    },
+                                    missingFields: {
+                                        value: {
+                                            success: false,
+                                            message: "Chain, from, to, and id are required parameters"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        description: "Unauthorized - Invalid credentials",
                         content: {
                             "application/json": {
                                 schema: { $ref: "#/components/schemas/ErrorResponse" }

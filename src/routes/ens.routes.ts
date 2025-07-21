@@ -1,11 +1,11 @@
-// ens.routes.ts
 import { RequestHandler, Router } from "express";
 import { checkWalletAuthenticated, validateApiKeyMiddleware, authenticateDeveloper } from "../middlewares/auth.middleware.js";
-import ENSController from "../controllers/ens.controller.js"; // Updated import
+import ENSController from "../controllers/ens.controller.js";
 
 const router = Router();
 const controller = new ENSController();
 
+// Developer-only routes
 router.post(
     "/prepare-registrar",
     validateApiKeyMiddleware as RequestHandler,
@@ -20,7 +20,6 @@ router.post(
     controller.registerRoot.bind(controller) as unknown as RequestHandler
 );
 
-// Add GET /ens/name route
 router.get(
     "/name",
     validateApiKeyMiddleware as RequestHandler,
@@ -28,6 +27,7 @@ router.get(
     controller.getENSName.bind(controller) as unknown as RequestHandler
 );
 
+// Wallet-authenticated routes
 router.get(
     "/subnames/check-availability",
     validateApiKeyMiddleware as RequestHandler,
@@ -42,5 +42,12 @@ router.post(
     controller.claimSubname.bind(controller) as unknown as RequestHandler
 );
 
+// New NameWrapper transfer route
+router.post(
+    "/namewrapper/prepare-transfer",
+    validateApiKeyMiddleware as RequestHandler,
+    authenticateDeveloper as RequestHandler,
+    controller.prepareNameWrapperTransfer.bind(controller) as unknown as RequestHandler
+);
 
 export default router;

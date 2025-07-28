@@ -279,21 +279,12 @@ export default class ENSController {
                 });
             }
 
-            // Find the ENS root contract for the developer's app
-            const ensRoot = await ENSRoot.findOne({ ownerAppId: appId });
-            if (!ensRoot) {
-                return res.status(HttpStatus.NOT_FOUND).json({
-                    success: false,
-                    message: "ENS root not found for this app"
-                });
-            }
-
             // Initialize Web3 service (only handles data preparation)
             const web3Service = new Web3Service(chain);
 
             // Prepare the transaction call data
             const preparedTx = await web3Service.prepareENSRegistrarCreation(
-                ensRoot.contractAddress as `0x${string}`,
+                contract_config.ENS_FACTORY_CONTRACT_ADDRESS as `0x${string}`,
                 contract_config.ENS_FACTORY_CONTRACT_ABI,
                 ensName,
                 from // Optional from address (for gas estimation)

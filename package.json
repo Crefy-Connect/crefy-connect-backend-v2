@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch server.ts",
     "start": "node dest/server.js",
-    "ens": "tsx index.ts",
+    "ens": "tsx src/bootstrap.ts",
     "build": "pnpm exec tsc ",
     "test": "echo \"Error: no test specified\" && exit 1",
     "deploy": "pm2 start dest/server.js --name api.crefy-connect-v2.crefy.xyz --instances 2"

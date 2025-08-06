@@ -10,7 +10,8 @@ import {
     http,
     type PublicClient,
     type WalletClient,
-    createWalletClient
+    createWalletClient,
+    decodeErrorResult
 } from "viem";
 import { AccountAbstractionService } from "./account-abstraction.js";
 import logger from "../utils/logger.js";
@@ -18,19 +19,13 @@ import { Account, privateKeyToAccount } from "viem/accounts";
 import { normalize, labelhash } from 'viem/ens';
 import { ChainUtils } from "../config/chains.config.js";
 import { formatEther } from "viem";
+import { sepolia } from "viem/chains";
+import { L1_SUBNAME_REGISTRAR_CONTRACT_ABI } from "../utils/contracts/L1SubnameRegistrar.js";
 
 interface SubnameClaimedEvent {
     node: string;
     label: string;
     owner: Address;
-}
-
-interface ContractCall {
-    contractAddress: Address;
-    abi: Abi;
-    functionName: string;
-    args?: any[];
-    value?: string;
 }
 
 interface TransactionResult {
@@ -60,6 +55,7 @@ interface ErrorResponse {
         accountBalance?: bigint;
         required?: bigint;
         shortBy?: bigint;
+        revertReason?: string;
     };
 }
 
@@ -92,13 +88,17 @@ class ENSL1SubnameRegistrarService {
             chainId: this.chain.id
         });
 
+        this.publicClient = createPublicClient({
+            chain: sepolia,
+            transport: http(),
+        });
 
-        this.initializeClients();
+        this.walletClient = createWalletClient({
+            account: this.account,
+            chain: sepolia,
+            transport: http()
+        });
     }
-
-    // ========================
-    // Public Methods
-    // ========================
 
     // View functions
     async getNameWrapperAddress(): Promise<Address> {
@@ -139,93 +139,9 @@ class ENSL1SubnameRegistrarService {
         return this.readContract("supportsInterface", [interfaceId]);
     }
 
-    async getBalance(): Promise<{ balance: string, address: Address }> {
-        try {
-            const balance = await this.publicClient.getBalance({
-                address: this.account.address
-            });
-            return {
-                balance: formatEther(balance),
-                address: this.account.address
-            };
-        } catch (error: any) {
-            logger.error(`Balance check failed: ${error.message}`);
-            throw new Error(`Balance check failed: ${error.message}`);
-        }
-    }
-
-    async claimName(name: string, sponsored: boolean = false): Promise<TransactionResult | ErrorResponse> {
-        // Validate input
-        if (!name || typeof name !== 'string' || name.length < 3) { // Changed to min 3 characters
-            return this.formatError(
-                'Name must be at least 3 characters',
-                'claimName',
-                [name]
-            );
-        }
-
-        const normalizedName = normalize(name);
-        logger.info(`Claiming name: ${normalizedName}`);
-
-        // Additional pre-flight checks
-        try {
-            const taken = await this.isNameTaken(name);
-            if (taken) {
-                return this.formatError(
-                    `Name '${name}' is already taken`,
-                    'claimName',
-                    [name]
-                );
-            }
-
-            const ownsParent = await this.ownsParentNode();
-            if (!ownsParent) {
-                return this.formatError(
-                    `Parent node is not owned by the contract`,
-                    'claimName',
-                    [name]
-                );
-            }
-        } catch (error: any) {
-            return this.formatError(
-                `Pre-flight check failed: ${error.message}`,
-                'claimName',
-                [name]
-            );
-        }
-
-        // Execute transaction
-        try {
-            return sponsored
-                ? await this.aaWriteContract("claimName", [normalizedName])
-                : await this.writeContract("claimName", [normalizedName]);
-        } catch (error: any) {
-            logger.error(`Claim failed: ${error.message}`);
-            return this.formatError(
-                error.message,
-                'claimName',
-                [name]
-            );
-        }
-    }
-
-
     // ========================
-    // Private Helpers
+    // Public Methods
     // ========================
-
-    private initializeClients() {
-        this.publicClient = createPublicClient({
-            chain: this.chain,
-            transport: http()
-        });
-
-        this.walletClient = createWalletClient({
-            account: this.account,
-            chain: this.chain,
-            transport: http()
-        });
-    }
 
     private async readContract(functionName: string, args: any[]): Promise<any> {
         try {
@@ -241,77 +157,95 @@ class ENSL1SubnameRegistrarService {
         }
     }
 
-    private async simulateContract(functionName: string, args: any[]) {
-        await this.publicClient.simulateContract({
-            account: this.account,
-            address: this.contractAddress,
-            abi: this.contractABI,
-            functionName,
-            args
-        });
+    async claimName(name: string, sponsored: boolean = false) {
+        const normalizedName = normalize(name);
+
+        // check if the name is already taken
+        const isTaken = await this.isNameTaken(name);
+        if (isTaken) {
+            throw new Error("Name is already taken");
+        }
+
+        // call write contract
+        const response = await this.writeContract("claimName", [normalizedName]);
+        return response;
     }
 
-    private async writeContract(functionName: string, args: any[]): Promise<TransactionResult> {
-        // Get current balance
-        const balance = await this.publicClient.getBalance({
-            address: this.account.address,
-        });
+    // ========================
+    // Private Helpers
+    // ========================
 
-        // Simulation
-        const { request } = await this.publicClient.simulateContract({
-            account: this.account,
-            address: this.contractAddress,
-            abi: this.contractABI,
-            functionName,
-            args,
-        });
 
-        // Gas estimation
-        let gasEstimate: bigint;
+
+    private async writeContract(functionName: string, args: any[]) {
         try {
-            gasEstimate = await this.publicClient.estimateContractGas({
+            const { request } = await this.publicClient.simulateContract({
                 account: this.account,
                 address: this.contractAddress,
                 abi: this.contractABI,
                 functionName,
                 args,
             });
-        } catch (estimateError: any) {
-            // Extract revert reason if available
-            let errorMsg = estimateError.message;
-            if (estimateError.cause?.data?.errorName) {
-                errorMsg = `Contract reverted: ${estimateError.cause.data.errorName}`;
+
+            console.log("Request:", request);
+
+            // 4. Execute transaction
+            const txHash = await this.walletClient.writeContract(request);
+            const receipt = await this.publicClient.waitForTransactionReceipt({
+                hash: txHash,
+            });
+
+            return {
+                status: 'success',
+                address: this.account.address,
+                hash: txHash,
+                receipt,
+                gasUsed: receipt.gasUsed,
+                effectiveGasPrice: receipt.effectiveGasPrice,
+                chainId: this.chain.id,
+            };
+        } catch (error: any) {
+            console.log("Error:", error);
+            logger.error(`Contract write failed for ${functionName}:`, error);
+            throw error;
+        }
+    }
+
+    private extractRevertReason(error: any): string {
+        if (error.cause?.data?.errorName) {
+            return error.cause.data.errorName;
+        }
+        if (error.data?.data) {
+            try {
+                const decoded = decodeErrorResult({
+                    abi: this.contractABI,
+                    data: error.data.data
+                });
+                return decoded.errorName || 'Unknown revert reason';
+            } catch (e) {
+                return 'Could not decode revert reason';
             }
-            throw new Error(`Gas estimation failed: ${errorMsg}`);
         }
+        return error.message || 'Unknown error';
+    }
 
-
-        const gasPrice = await this.publicClient.getGasPrice();
-        const estimatedCost = gasEstimate * gasPrice;
-
-        // Balance check
-        if (balance < estimatedCost) {
-            throw new Error(
-                `Insufficient funds. Required: ${formatEther(estimatedCost)} ETH, Available: ${formatEther(balance)} ETH`
-            );
-        }
-
-        // Execute transaction
-        const txHash = await this.walletClient.writeContract(request);
-        const receipt = await this.publicClient.waitForTransactionReceipt({
-            hash: txHash,
-        });
-
+    private formatError(
+        error: string,
+        functionName: string,
+        args: any[],
+        additionalDetails: Partial<ErrorResponse['details']> = {}
+    ): ErrorResponse {
         return {
-            status: 'success',
-            address: this.account.address,
-            hash: txHash,
-            receipt,
-            gasUsed: receipt.gasUsed,
-            effectiveGasPrice: receipt.effectiveGasPrice,
-            estimatedGas: gasEstimate,
-            estimatedCost: Number(estimatedCost),
-            chainId: this.chain.id,
+            status: 'error',
+            error,
+            details: {
+                functionName,
+                args,
+                account: this.account.address,
+                contractAddress: this.contractAddress,
+                chainId: this.chain.id,
+                ...additionalDetails
+            }
         };
     }
 
@@ -336,23 +270,6 @@ class ENSL1SubnameRegistrarService {
         };
     }
 
-    private formatError(
-        error: string,
-        functionName: string,
-        args: any[]
-    ): ErrorResponse {
-        return {
-            status: 'error',
-            error,
-            details: {
-                functionName,
-                args,
-                account: this.account.address,
-                contractAddress: this.contractAddress,
-                chainId: this.chain.id,
-            }
-        };
-    }
 }
 
 export default ENSL1SubnameRegistrarService;

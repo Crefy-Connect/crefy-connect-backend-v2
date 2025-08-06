@@ -54,7 +54,8 @@ export default class ENSController {
     public async registerRoot(req: Request, res: Response) {
         try {
             const { id: walletId } = (req as any).user;
-            const { ens_name, contractAddress, chain, isActive } = req.body;
+            const { ens_name, contractAddress, chain, status, txHash } = req.body;
+            console.log(`ens_name: ${ens_name}, contractAddress: ${contractAddress}, chain: ${chain}, status: ${status}, txHash: ${txHash}`);
 
             if (!ens_name || !chain) {
                 return res.status(HttpStatus.BAD_REQUEST).json({
@@ -82,7 +83,8 @@ export default class ENSController {
                 ens_name,
                 contractAddress,
                 ownerAppId: (req as any).developer_app.appId,
-                isActive: isActive !== false // Default to true if not specified
+                status: status || 'pending',
+                txHash: txHash || null
             });
 
             await newRoot.save();
@@ -93,7 +95,7 @@ export default class ENSController {
                 data: {
                     name: newRoot.ens_name,
                     contractAddress: newRoot.contractAddress,
-                    isActive: newRoot.isActive,
+                    status: newRoot.status,
                     ownerAppId: newRoot.ownerAppId
                 }
             });
@@ -131,7 +133,7 @@ export default class ENSController {
                 data: {
                     ensName: ensRoot.ens_name,
                     contractAddress: ensRoot.contractAddress,
-                    isActive: ensRoot.isActive
+                    status: ensRoot.status
                 }
             });
 
@@ -222,6 +224,7 @@ export default class ENSController {
                 });
             }
             const response: any = await ensService.claimName(subName as string);
+            console.log(response);
             if (response.status === 'error') {
                 const gasInfoMatch = response.error.match(
                     /maxFeePerGas:\s+([^\s]+)\s+gwei.*?maxPriorityFeePerGas:\s+([^\s]+)\s+gwei/s
@@ -279,6 +282,38 @@ export default class ENSController {
                 });
             }
 
+
+            // Check if ENS root already exists for this app
+            const existingRoot = await ENSRoot.findOne({
+                ownerAppId: appId,
+                ens_name: ensName
+            });
+
+            // If exists and is active, return the contract address
+            if (existingRoot && existingRoot.status === 'active' && existingRoot.contractAddress) {
+                return res.status(HttpStatus.OK).json({
+                    success: true,
+                    message: "ENS root already registered",
+                    data: {
+                        contractAddress: existingRoot.contractAddress,
+                        status: existingRoot.status
+                    }
+                });
+            }
+
+            // If exists but pending/failed, return the existing record
+            if (existingRoot && existingRoot.status !== 'active') {
+                return res.status(HttpStatus.OK).json({
+                    success: true,
+                    message: `ENS root registration ${existingRoot.status}`,
+                    data: {
+                        status: existingRoot.status,
+                        txHash: existingRoot.txHash,
+                        contractAddress: existingRoot.contractAddress
+                    }
+                });
+            }
+
             // Initialize Web3 service (only handles data preparation)
             const web3Service = new Web3Service(chain);
 
@@ -314,23 +349,24 @@ export default class ENSController {
     }
 
     /**
- * @api {post} /ens/namewrapper/prepare-transfer Prepare NameWrapper Transfer
- * @apiName PrepareNameWrapperTransfer
- * @apiGroup ENS
- * @apiDescription Prepares a safeTransferFrom transaction for the ENS NameWrapper contract
- */
+     * @api {post} /ens/namewrapper/prepare-approval Prepare NameWrapper Approval
+     * @apiName PrepareNameWrapperApproval
+     * @apiGroup ENS
+     * @apiDescription Prepares a setApprovalForAll transaction for the ENS NameWrapper contract
+     */
     public async prepareNameWrapperTransfer(req: Request, res: Response) {
         try {
             const { id: userID } = (req as any).user;
-            const { chain, from, to, id, amount, data } = req.body;
+            const { chain, operator, approved } = req.body;
             const { appId } = (req as any).developer_app;
 
-            if (!chain || !from || !to || id === undefined) {
+            if (!chain || !operator || typeof approved !== 'boolean') {
                 return res.status(HttpStatus.BAD_REQUEST).json({
                     success: false,
-                    message: "Chain, from, to, and id are required parameters"
+                    message: "Chain, operator (address), and approved (boolean) are required parameters"
                 });
             }
+
 
             // Validate the chain
             const chainConfig = ChainUtils.getChainByName(chain);
@@ -349,17 +385,14 @@ export default class ENSController {
                 contract_config.ENS_NAMEWRAPPER_CONTRACT_ADDRESS as `0x${string}`,
                 contract_config.ENS_NAMEWRAPPER_CONTRACT_ABI,
                 {
-                    from,
-                    to,
-                    id,
-                    amount: amount || 1, // Default to 1 if amount not specified
-                    data: data || '0x' // Default to empty bytes
+                    operator,
+                    approved
                 }
             );
 
             return res.status(HttpStatus.OK).json({
                 success: true,
-                message: "NameWrapper transfer transaction prepared successfully",
+                message: "NameWrapper approval transaction prepared successfully",
                 data: preparedTx
             });
 
@@ -380,4 +413,82 @@ export default class ENSController {
         }
     }
 
+
+    /**
+     * @api {post} /ens/roots/update-status Update ENS Root Status
+     * @apiName UpdateENSRootStatus
+     * @apiGroup ENS
+    */
+    public async updateENSRootStatus(req: Request, res: Response) {
+        try {
+            const { status, contractAddress, txHash } = req.body;
+            const { appId } = (req as any).developer_app;
+
+            if (!status || !['active', 'failed'].includes(status)) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: "Valid ENS name and status are required"
+                });
+            }
+
+            if (status === 'active' && !contractAddress) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: "Contract address is required for active status"
+                });
+            }
+
+            const ensRoot = await ENSRoot.findOneAndUpdate(
+                { contractAddress, ownerAppId: appId },
+                {
+                    status,
+                    ...(txHash && { txHash }),
+                    updatedAt: new Date()
+                },
+                { new: true }
+            );
+
+            if (!ensRoot) {
+                return res.status(HttpStatus.NOT_FOUND).json({
+                    success: false,
+                    message: "ENS root not found"
+                });
+            }
+
+            return res.status(HttpStatus.OK).json({
+                success: true,
+                message: `ENS root status updated to ${status}`,
+                data: ensRoot
+            });
+
+        } catch (error: any) {
+            logger.error(`Error in updateENSRootStatus: ${error.message}`);
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+
+    // get all roots
+    public async getAllRoots(req: Request, res: Response) {
+        try {
+            const { appId } = (req as any).developer_app;
+
+            const roots = await ENSRoot.find({ ownerAppId: appId });
+            return res.status(HttpStatus.OK).json({
+                success: true,
+                message: "All ENS roots fetched successfully",
+                data: roots
+            });
+
+        } catch (error: any) {
+            logger.error(`Error in getAllRoots: ${error.message}`);
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
 }

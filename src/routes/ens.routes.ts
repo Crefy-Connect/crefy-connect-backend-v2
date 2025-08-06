@@ -49,4 +49,19 @@ router.post(
     controller.prepareNameWrapperTransfer.bind(controller) as unknown as RequestHandler
 );
 
+// update root status
+router.post(
+    "/roots/update-status",
+    validateApiKeyMiddleware as RequestHandler,
+    authenticateDeveloper as RequestHandler,
+    controller.updateENSRootStatus.bind(controller) as unknown as RequestHandler
+);
+
+router.get(
+    "/roots",
+    validateApiKeyMiddleware as RequestHandler,
+    authenticateDeveloper as RequestHandler,
+    controller.getAllRoots.bind(controller) as unknown as RequestHandler
+);
+
 export default router;

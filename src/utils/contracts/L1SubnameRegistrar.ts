@@ -1,323 +1,274 @@
 export const L1_SUBNAME_REGISTRAR_CONTRACT_ABI = [
     {
+        "type": "constructor",
         "inputs": [
             {
-                "internalType": "bytes32",
                 "name": "_parentNode",
-                "type": "bytes32"
+                "type": "bytes32",
+                "internalType": "bytes32"
             }
         ],
-        "stateMutability": "nonpayable",
-        "type": "constructor"
+        "stateMutability": "nonpayable"
     },
     {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "node",
-                "type": "bytes32"
-            },
-            {
-                "internalType": "string",
-                "name": "label",
-                "type": "string"
-            }
-        ],
-        "name": "NameAlreadyClaimed",
-        "type": "error"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "parentNode",
-                "type": "bytes32"
-            }
-        ],
-        "name": "invalidParentNode",
-        "type": "error"
-    },
-    {
-        "anonymous": false,
-        "inputs": [
-            {
-                "indexed": true,
-                "internalType": "bytes32",
-                "name": "node",
-                "type": "bytes32"
-            },
-            {
-                "indexed": false,
-                "internalType": "string",
-                "name": "label",
-                "type": "string"
-            },
-            {
-                "indexed": true,
-                "internalType": "address",
-                "name": "owner",
-                "type": "address"
-            }
-        ],
-        "name": "SubnameClaimed",
-        "type": "event"
-    },
-    {
-        "inputs": [],
+        "type": "function",
         "name": "NameWrapperAddress",
+        "inputs": [],
         "outputs": [
             {
-                "internalType": "address",
                 "name": "",
-                "type": "address"
+                "type": "address",
+                "internalType": "address"
             }
         ],
-        "stateMutability": "view",
-        "type": "function"
+        "stateMutability": "view"
     },
     {
-        "inputs": [
-            {
-                "internalType": "string",
-                "name": "label",
-                "type": "string"
-            }
-        ],
+        "type": "function",
         "name": "claimName",
-        "outputs": [
-            {
-                "internalType": "bytes32",
-                "name": "",
-                "type": "bytes32"
-            }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [],
-        "name": "getId",
-        "outputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
-                "internalType": "string",
                 "name": "label",
-                "type": "string"
+                "type": "string",
+                "internalType": "string"
             }
         ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
         "name": "getSubnameOwner",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
-                "internalType": "bytes32",
-                "name": "",
-                "type": "bytes32"
+                "name": "label",
+                "type": "string",
+                "internalType": "string"
             }
         ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
         "name": "nameTaken",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [
             {
-                "internalType": "address",
                 "name": "",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            },
-            {
-                "internalType": "uint256[]",
-                "name": "",
-                "type": "uint256[]"
-            },
-            {
-                "internalType": "bytes",
-                "name": "",
-                "type": "bytes"
+                "type": "bytes32",
+                "internalType": "bytes32"
             }
         ],
-        "name": "onERC1155BatchReceived",
         "outputs": [
             {
-                "internalType": "bytes4",
                 "name": "",
-                "type": "bytes4"
+                "type": "bool",
+                "internalType": "bool"
             }
         ],
-        "stateMutability": "nonpayable",
-        "type": "function"
+        "stateMutability": "view"
     },
     {
-        "inputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            },
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            },
-            {
-                "internalType": "bytes",
-                "name": "",
-                "type": "bytes"
-            }
-        ],
-        "name": "onERC1155Received",
-        "outputs": [
-            {
-                "internalType": "bytes4",
-                "name": "",
-                "type": "bytes4"
-            }
-        ],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
+        "type": "function",
+        "name": "owner",
         "inputs": [],
-        "name": "ownsParentNode",
         "outputs": [
             {
-                "internalType": "bool",
                 "name": "",
-                "type": "bool"
+                "type": "address",
+                "internalType": "address"
             }
         ],
-        "stateMutability": "view",
-        "type": "function"
+        "stateMutability": "view"
     },
     {
-        "inputs": [],
+        "type": "function",
         "name": "parentNode",
-        "outputs": [
-            {
-                "internalType": "bytes32",
-                "name": "",
-                "type": "bytes32"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bytes32",
-                "name": "",
-                "type": "bytes32"
-            }
-        ],
-        "name": "subnameOwners",
-        "outputs": [
-            {
-                "internalType": "address",
-                "name": "",
-                "type": "address"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
-            }
-        ],
-        "name": "subnamesRegisteredAsBytes32",
-        "outputs": [
-            {
-                "internalType": "bytes32",
-                "name": "",
-                "type": "bytes32"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            {
-                "internalType": "bytes4",
-                "name": "interfaceId",
-                "type": "bytes4"
-            }
-        ],
-        "name": "supportsInterface",
-        "outputs": [
-            {
-                "internalType": "bool",
-                "name": "",
-                "type": "bool"
-            }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    },
-    {
         "inputs": [],
-        "name": "viewAllSubnames",
         "outputs": [
             {
-                "internalType": "bytes32[]",
                 "name": "",
-                "type": "bytes32[]"
+                "type": "bytes32",
+                "internalType": "bytes32"
             }
         ],
-        "stateMutability": "view",
-        "type": "function"
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "renounceOwnership",
+        "inputs": [],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "subnameOwners",
+        "inputs": [
+            {
+                "name": "",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "subnamesRegisteredAsBytes32",
+        "inputs": [
+            {
+                "name": "",
+                "type": "uint256",
+                "internalType": "uint256"
+            }
+        ],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "function",
+        "name": "transferOwnership",
+        "inputs": [
+            {
+                "name": "newOwner",
+                "type": "address",
+                "internalType": "address"
+            }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+    },
+    {
+        "type": "function",
+        "name": "viewAllSubnames",
+        "inputs": [],
+        "outputs": [
+            {
+                "name": "",
+                "type": "bytes32[]",
+                "internalType": "bytes32[]"
+            }
+        ],
+        "stateMutability": "view"
+    },
+    {
+        "type": "event",
+        "name": "OwnershipTransferred",
+        "inputs": [
+            {
+                "name": "previousOwner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            },
+            {
+                "name": "newOwner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "event",
+        "name": "SubnameClaimed",
+        "inputs": [
+            {
+                "name": "node",
+                "type": "bytes32",
+                "indexed": true,
+                "internalType": "bytes32"
+            },
+            {
+                "name": "label",
+                "type": "string",
+                "indexed": false,
+                "internalType": "string"
+            },
+            {
+                "name": "owner",
+                "type": "address",
+                "indexed": true,
+                "internalType": "address"
+            }
+        ],
+        "anonymous": false
+    },
+    {
+        "type": "error",
+        "name": "NameAlreadyClaimed",
+        "inputs": [
+            {
+                "name": "node",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            },
+            {
+                "name": "label",
+                "type": "string",
+                "internalType": "string"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "OwnableInvalidOwner",
+        "inputs": [
+            {
+                "name": "owner",
+                "type": "address",
+                "internalType": "address"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "OwnableUnauthorizedAccount",
+        "inputs": [
+            {
+                "name": "account",
+                "type": "address",
+                "internalType": "address"
+            }
+        ]
+    },
+    {
+        "type": "error",
+        "name": "invalidParentNode",
+        "inputs": [
+            {
+                "name": "parentNode",
+                "type": "bytes32",
+                "internalType": "bytes32"
+            }
+        ]
     }
 ] as const;
 

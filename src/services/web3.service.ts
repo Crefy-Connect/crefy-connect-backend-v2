@@ -24,11 +24,8 @@ interface PreparedTransaction {
 }
 
 interface NameWrapperTransferParams {
-    from: Address;
-    to: Address;
-    id: bigint | string | number;
-    amount?: bigint | string | number;
-    data?: string;
+    operator: Address;
+    approved: boolean;
 }
 
 export class Web3Service {
@@ -106,14 +103,14 @@ export class Web3Service {
             throw new Error("ENS name must be a valid string");
         }
 
-        const normalizedName = normalize(ensName);
-        const parentNode = labelhash(normalizedName);
+        // const normalizedName = normalize(ensName);
+        // const parentNode = labelhash(normalizedName);
 
         return this.prepareTransaction(
             contractAddress,
             abi,
             "createSubnameRegistrar",
-            [parentNode],
+            [ensName],
             BigInt(0),
             from
         );
@@ -122,35 +119,49 @@ export class Web3Service {
     public async prepareNameWrapperTransfer(
         contractAddress: Address,
         abi: Abi,
-        params: NameWrapperTransferParams
+        params: { operator: Address, approved: boolean }
     ): Promise<PreparedTransaction> {
         try {
-            // Convert all parameters to the correct types
-            const from = params.from;
-            const to = params.to;
-            const id = BigInt(params.id);
-            const amount = params.amount ? BigInt(params.amount) : BigInt(1);
-            const data = params.data || toHex(new Uint8Array()); // Default to empty bytes
+            const { operator, approved } = params;
 
-            // Validate addresses
-            if (!/^0x[a-fA-F0-9]{40}$/.test(from)) {
-                throw new Error("Invalid 'from' address");
-            }
-            if (!/^0x[a-fA-F0-9]{40}$/.test(to)) {
-                throw new Error("Invalid 'to' address");
+            // Validate operator address
+            if (!/^0x[a-fA-F0-9]{40}$/.test(operator)) {
+                throw new Error("Invalid operator address");
             }
 
-            return this.prepareTransaction(
-                contractAddress,
+            // Prepare the transaction data
+            const txData = encodeFunctionData({
                 abi,
-                "safeTransferFrom",
-                [from, to, id, amount, data],
-                BigInt(0), // Typically no value needed for transfers
-                from
-            );
+                functionName: 'setApprovalForAll',
+                args: [operator, approved]
+            });
+
+            // Estimate gas
+            let estimatedGas: bigint;
+            try {
+                estimatedGas = await this.publicClient.estimateContractGas({
+                    address: contractAddress,
+                    abi,
+                    functionName: 'setApprovalForAll',
+                    args: [operator, approved],
+                    account: operator // Need an account for estimation
+                });
+            } catch (error) {
+                logger.error(`Gas estimation failed: ${error}`);
+                estimatedGas = BigInt(500000); // Default gas limit
+            }
+
+            return {
+                to: contractAddress,
+                data: txData,
+                value: '0', // No value needed for approvals
+                gas: estimatedGas.toString(),
+                from: operator, // The account that will be sending the transaction
+                chainId: Number(this.chain.id)
+            };
         } catch (error) {
-            logger.error(`Error preparing NameWrapper transfer: ${error}`);
-            throw new Error(`Failed to prepare NameWrapper transfer: ${error instanceof Error ? error.message : String(error)}`);
+            logger.error(`Error preparing NameWrapper approval: ${error}`);
+            throw new Error(`Failed to prepare NameWrapper approval: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 }

@@ -1,4 +1,5 @@
-import { english, generateMnemonic, mnemonicToAccount } from 'viem/accounts';
+import { english, generateMnemonic, mnemonicToAccount, privateKeyToAccount } from 'viem/accounts';
+import { toHex } from 'viem/utils';
 
 export class WalletGenerationError extends Error {
     constructor(message: string) {
@@ -19,26 +20,22 @@ class WalletGenerationService {
         try {
             const mnemonic: string = generateMnemonic(english, 128);
             const account = mnemonicToAccount(mnemonic);
-            const hdKey = account.getHdKey();
-            const derivedKey = hdKey.derive("m/44'/60'/0'/0/0");
-            const privateKeyBuffer = derivedKey.privateKey;
 
-            if (!privateKeyBuffer || privateKeyBuffer.length !== 32) {
-                throw new WalletGenerationError("Failed to generate a valid private key.");
+            // Get the private key directly from the account
+            const privateKey = toHex(account.getHdKey().privateKey!);
+
+            // Verify the address matches when creating from private key
+            const privateKeyAccount = privateKeyToAccount(privateKey);
+
+            if (account.address.toLowerCase() !== privateKeyAccount.address.toLowerCase()) {
+                throw new WalletGenerationError("Address mismatch between mnemonic and private key derivation");
             }
 
-            const privateKey: string = `0x${Buffer.from(privateKeyBuffer).toString('hex')}`;
-            const address: string = account.address;
-            const publicKey: string = account.publicKey;
-
-            if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
-                throw new WalletGenerationError("Generated address is invalid.");
-            }
             return {
-                address,
+                address: account.address,
                 privateKey,
                 mnemonic,
-                publicKey
+                publicKey: account.publicKey
             };
         } catch (err: unknown) {
             console.error("Wallet generation failed:", err);

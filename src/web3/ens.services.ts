@@ -83,6 +83,8 @@ class ENSL1SubnameRegistrarService {
 
         this.chain = chain;
         this.account = privateKeyToAccount(privateKey as `0x${string}`);
+        console.log(this.account);
+
         this.aaService = new AccountAbstractionService({
             privateKey,
             chainId: this.chain.id

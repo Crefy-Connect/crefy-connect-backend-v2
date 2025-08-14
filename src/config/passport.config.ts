@@ -271,9 +271,21 @@ const configurePassport = () => {
     // Enhanced deserialization
     passport.deserializeUser(async (serialized: any, done) => {
         try {
+            if (!serialized?.id) {
+                logger.warn('Deserialization attempted with invalid serialized data', { serialized });
+                return done(null, false); // Indicate no user found without error
+            }
+
             const wallet = await Wallet.findById(serialized.id);
             if (!wallet) {
-                throw new Error('Wallet not found');
+                logger.warn('Wallet not found during deserialization', { walletId: serialized.id });
+
+                // Optionally clean up the session
+                if (serialized.sessionId) {
+                    await ConnectionSession.deleteOne({ sessionId: serialized.sessionId });
+                }
+
+                return done(null, false); // Indicate no user found without error
             }
 
             const user = {
@@ -288,7 +300,7 @@ const configurePassport = () => {
             done(null, user);
         } catch (error) {
             logger.error('Deserialization error:', error);
-            done(error);
+            done(null, false); // Fail gracefully
         }
     });
 

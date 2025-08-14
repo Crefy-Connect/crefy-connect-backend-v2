@@ -2,7 +2,8 @@ import { Document, Schema, model } from "mongoose";
 
 export interface IWallet extends Document {
     appId: string;
-    email: string;
+    email?: string;  // Made optional
+    phoneNumber?: string;  // Added for SMS auth
     socialType: string;
     address: string;
     publicKey: string;
@@ -22,7 +23,8 @@ export interface IWallet extends Document {
 
 const WalletSchema = new Schema<IWallet>({
     appId: { type: String, required: true },
-    email: { type: String, required: true, },
+    email: { type: String, required: false },  // Made optional
+    phoneNumber: { type: String, required: false },  // Added for SMS auth
     socialType: { type: String, required: true },
     address: { type: String, required: true, index: true },
     publicKey: { type: String, required: true },
@@ -40,7 +42,10 @@ const WalletSchema = new Schema<IWallet>({
     },
 });
 
+// Updated index to include phoneNumber
 WalletSchema.index({ appId: 1, address: 1 }, { unique: true });
+WalletSchema.index({ appId: 1, email: 1 }, { unique: true, sparse: true });
+WalletSchema.index({ appId: 1, phoneNumber: 1 }, { unique: true, sparse: true });
 
 WalletSchema.pre<IWallet>('save', function (next) {
     this.updatedAt = new Date();

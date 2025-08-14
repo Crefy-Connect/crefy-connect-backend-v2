@@ -5,6 +5,7 @@ import { cryptoTransactionSwagger } from '../swagger/crypto.transaction.swagger.
 import { developerSwagger } from '../swagger/developer.swagger.js';
 import { appSwagger } from '../swagger/app.swagger.js';
 import { ensSwagger } from '../swagger/ens.swagger.js';
+import { smsAuthSwagger } from '../swagger/sms.swagger.js';
 
 const baseDefinition = {
     openapi: '3.0.0',
@@ -63,15 +64,17 @@ const baseDefinition = {
                 }
             },
             ...socialLoginsSwagger.components?.schemas,
+            ...smsAuthSwagger.components?.schemas,
             ...cryptoTransactionSwagger.components?.schemas,
             ...developerSwagger.components?.schemas,
             ...appSwagger.components?.schemas,
-            ...ensSwagger.components?.schemas
+            ...ensSwagger.components?.schemas,
         }
     },
     // Merge tags and paths from socialLoginsSwagger
     tags: [
         ...(socialLoginsSwagger.tags || []),
+        ...(smsAuthSwagger.tags || []),
         ...(cryptoTransactionSwagger.tags || []),
         ...(developerSwagger.tags || []),
         ...(appSwagger.tags || []),
@@ -79,6 +82,7 @@ const baseDefinition = {
     ],
     paths: {
         ...(socialLoginsSwagger.paths || {}),
+        ...(smsAuthSwagger.paths || {}),
         ...(cryptoTransactionSwagger.paths || {}),
         ...(developerSwagger.paths || {}),
         ...(appSwagger.paths || {}),

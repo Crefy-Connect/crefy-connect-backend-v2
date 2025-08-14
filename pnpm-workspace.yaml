@@ -1,2 +1,9 @@
 ignoredBuiltDependencies:
   - esbuild
+onlyBuiltDependencies:
+  - '@scarf/scarf'
+  - bcrypt
+  - bufferutil
+  - es5-ext
+  - keccak
+  - utf-8-validate

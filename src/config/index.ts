@@ -160,6 +160,11 @@ export const elementpay_config = {
     rpcUrl: process.env.BASE_RPC_URL,
 };
 
+export const GoogleConfig = {
+    clientID: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+}
+
 export const twilio_config = {
     TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID || '',
     TWILIO_AUTH_TOKEN: process.env.TWILIO_AUTH_TOKEN || '',

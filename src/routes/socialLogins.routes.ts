@@ -67,4 +67,7 @@ router.get('/google/failure', (req: Request, res: Response) => {
     }, 401);
 });
 
+// Test non-passport google Oauth
+router.get('/loginwithgoogle', SocialLoginsController.loginWithGoogle as unknown as RequestHandler)
+
 export default router;

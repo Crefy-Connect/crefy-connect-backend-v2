@@ -421,7 +421,92 @@ export const ensSwagger = {
                     }
                 },
                 required: ["success", "message"]
-            }
+            },
+
+            ResolverAddressRequest: {
+                type: "object",
+                required: ["ensName", "chain"],
+                properties: {
+                    ensName: {
+                        type: "string",
+                        example: "test.crefy.eth",
+                        description: "ENS name to query"
+                    },
+                    chain: {
+                        type: "string",
+                        enum: ["ethereum", "sepolia", "goerli"],
+                        example: "sepolia",
+                        description: "Blockchain network"
+                    }
+                },
+                additionalProperties: false
+            },
+
+            ResolverAddressResponse: {
+                type: "object",
+                properties: {
+                    success: {
+                        type: "boolean",
+                        example: true
+                    },
+                    message: {
+                        type: "string",
+                        example: "Resolver address retrieved successfully"
+                    },
+                    data: {
+                        type: "object",
+                        properties: {
+                            ensName: {
+                                type: "string",
+                                example: "test.crefy.eth"
+                            },
+                            address: {
+                                type: "string",
+                                example: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                description: "Resolved address or null if not set"
+                            },
+                            resolverContract: {
+                                type: "string",
+                                example: "0x123...abc",
+                                description: "Resolver contract address"
+                            }
+                        },
+                        required: ["ensName", "address"]
+                    }
+                },
+                required: ["success", "message", "data"]
+            },
+
+            SetResolverAddressRequest: {
+                type: "object",
+                required: ["ensName", "newAddress", "chain"],
+                properties: {
+                    ensName: {
+                        type: "string",
+                        example: "test.crefy.eth",
+                        description: "ENS name to update"
+                    },
+                    newAddress: {
+                        type: "string",
+                        pattern: "^0x[a-fA-F0-9]{40}$",
+                        example: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                        description: "New address to set"
+                    },
+                    chain: {
+                        type: "string",
+                        enum: ["ethereum", "sepolia", "goerli"],
+                        example: "sepolia",
+                        description: "Blockchain network"
+                    },
+                    from: {
+                        type: "string",
+                        pattern: "^0x[a-fA-F0-9]{40}$",
+                        example: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                        description: "Optional sender address for gas estimation"
+                    }
+                },
+                additionalProperties: false
+            },
         },
 
         securitySchemes: {
@@ -982,6 +1067,186 @@ export const ensSwagger = {
                     },
                     "404": {
                         description: "ENS root not found for this app",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    },
+                    "500": {
+                        description: "Internal server error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+
+        "/ens/resolver/address": {
+            get: {
+                summary: "Get resolved address for an ENS name",
+                description: "Returns the address record for a given ENS name from the resolver contract. Requires valid API key.",
+                tags: ["ENS"],
+                security: [
+                    { ApiKeyAuth: [] }
+                ],
+                parameters: [
+                    {
+                        in: "query",
+                        name: "ensName",
+                        required: true,
+                        schema: {
+                            type: "string"
+                        },
+                        description: "ENS name to query (e.g., test.crefy.eth)"
+                    },
+                    {
+                        in: "query",
+                        name: "chain",
+                        required: true,
+                        schema: {
+                            type: "string",
+                            enum: ["ethereum", "sepolia", "goerli"]
+                        },
+                        description: "Blockchain network to query on"
+                    }
+                ],
+                responses: {
+                    "200": {
+                        description: "Resolver address retrieved successfully",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ResolverAddressResponse" },
+                                examples: {
+                                    success: {
+                                        value: {
+                                            success: true,
+                                            message: "Resolver address retrieved successfully",
+                                            data: {
+                                                ensName: "test.crefy.eth",
+                                                address: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                resolverContract: "0x123...abc"
+                                            }
+                                        }
+                                    },
+                                    notSet: {
+                                        value: {
+                                            success: true,
+                                            message: "No address set for this ENS name",
+                                            data: {
+                                                ensName: "test.crefy.eth",
+                                                address: null,
+                                                resolverContract: "0x123...abc"
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        description: "Validation error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    invalidName: {
+                                        value: {
+                                            success: false,
+                                            message: "ENS name must be a valid string"
+                                        }
+                                    },
+                                    missingFields: {
+                                        value: {
+                                            success: false,
+                                            message: "ENS name and chain are required"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        description: "Internal server error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+
+        "/ens/resolver/set-address": {
+            post: {
+                summary: "Prepare transaction to set ENS resolver address",
+                description: "Prepares a transaction to set or update the address record for an ENS name. Returns the transaction data that can be signed by the frontend. Requires developer authentication and valid API key.",
+                tags: ["ENS"],
+                security: [
+                    { ApiKeyAuth: [] },
+                    { BearerAuth: [] }
+                ],
+                requestBody: {
+                    required: true,
+                    content: {
+                        "application/json": {
+                            schema: { $ref: "#/components/schemas/SetResolverAddressRequest" }
+                        }
+                    }
+                },
+                responses: {
+                    "200": {
+                        description: "Transaction prepared successfully",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/PrepareSubnameRegistrarResponse" },
+                                examples: {
+                                    success: {
+                                        value: {
+                                            success: true,
+                                            message: "Transaction prepared successfully",
+                                            data: {
+                                                to: "0x123...abc", // Resolver contract address
+                                                data: "0x456...def",
+                                                value: "0",
+                                                gas: "50000",
+                                                from: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                chainId: 11155111
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        description: "Validation error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    invalidAddress: {
+                                        value: {
+                                            success: false,
+                                            message: "Invalid address format"
+                                        }
+                                    },
+                                    noResolver: {
+                                        value: {
+                                            success: false,
+                                            message: "No resolver found for ENS name"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        description: "Unauthorized - Invalid credentials",
                         content: {
                             "application/json": {
                                 schema: { $ref: "#/components/schemas/ErrorResponse" }

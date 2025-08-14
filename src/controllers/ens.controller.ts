@@ -8,7 +8,6 @@ import { ENSRoot } from "../models/ensroot.models.js";
 import { Web3Service } from "../services/web3.service.js";
 import { contract_config } from "../config/index.js";
 
-
 export default class ENSController {
     /**
      * Initialize ENS service for a specific user wallet
@@ -55,7 +54,6 @@ export default class ENSController {
         try {
             const { id: walletId } = (req as any).user;
             const { ens_name, contractAddress, chain, status, txHash } = req.body;
-            console.log(`ens_name: ${ens_name}, contractAddress: ${contractAddress}, chain: ${chain}, status: ${status}, txHash: ${txHash}`);
 
             if (!ens_name || !chain) {
                 return res.status(HttpStatus.BAD_REQUEST).json({
@@ -109,16 +107,13 @@ export default class ENSController {
     }
 
     /**
- * @api {get} /ens/name Get ENS Name
- * @apiName GetENSName
- * @apiGroup ENS
- * @apiDescription Get the ENS root name associated with the current app
- */
+     * @api {get} /ens/name Get ENS Name
+     * @apiName GetENSName
+     * @apiGroup ENS
+     */
     public async getENSName(req: Request, res: Response) {
         try {
             const { appId } = (req as any).developer_app;
-
-            // Find the ENS root for this app
             const ensRoot = await ENSRoot.findOne({ ownerAppId: appId });
 
             if (!ensRoot) {
@@ -136,9 +131,91 @@ export default class ENSController {
                     status: ensRoot.status
                 }
             });
-
         } catch (error: any) {
             logger.error(`Error in getENSName: ${error.message}`);
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    /**
+     * @api {get} /ens/resolver/address Get Resolver Address
+     * @apiName GetResolverAddress
+     * @apiGroup ENS
+     * @apiQuery {String} ensName The ENS name to query
+     * @apiQuery {String} chain The blockchain network
+     */
+    public async getResolverAddress(req: Request, res: Response) {
+        try {
+            const { ensName, chain } = req.query;
+
+            if (!ensName || !chain) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: "ENS name and chain are required"
+                });
+            }
+
+            const web3Service = new Web3Service(chain.toString());
+            const address = await web3Service.getResolverAddress(ensName.toString());
+
+            return res.status(HttpStatus.OK).json({
+                success: true,
+                data: {
+                    ensName,
+                    address
+                }
+            });
+        } catch (error: any) {
+            logger.error(`Error in getResolverAddress: ${error.message}`);
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    /**
+     * @api {post} /ens/resolver/set-address Prepare Set Resolver Address
+     * @apiName PrepareSetResolverAddress
+     * @apiGroup ENS
+     * @apiDescription Prepares a transaction to set the address for an ENS name
+     */
+    public async prepareSetResolverAddress(req: Request, res: Response) {
+        try {
+            const { ensName, newAddress, chain, from } = req.body;
+
+            if (!ensName || !newAddress || !chain) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: "ENS name, new address and chain are required"
+                });
+            }
+
+            const web3Service = new Web3Service(chain);
+            const preparedTx = await web3Service.prepareSetResolverAddress(
+                ensName,
+                newAddress,
+                from
+            );
+
+            return res.status(HttpStatus.OK).json({
+                success: true,
+                message: "Transaction prepared successfully",
+                data: preparedTx
+            });
+        } catch (error: any) {
+            logger.error(`Error in prepareSetResolverAddress: ${error.message}`);
+
+            if (error.message.includes("Invalid address format")) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: error.message
+                });
+            }
+
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
                 success: false,
                 message: error.message
@@ -150,8 +227,6 @@ export default class ENSController {
      * @api {get} /ens/subnames/check-availability Check Subname Availability
      * @apiName CheckSubnameAvailability
      * @apiGroup ENS
-     * @apiQuery {String} subName The subname to check
-     * @apiQuery {String} chain The blockchain network (ethereum|sepolia|goerli)
      */
     public async checkAvailability(req: Request, res: Response) {
         try {
@@ -166,7 +241,6 @@ export default class ENSController {
                 });
             }
 
-            // Convert query parameters to strings
             const subNameStr = subName.toString();
             const chainStr = chain.toString();
 
@@ -178,7 +252,6 @@ export default class ENSController {
                 message: isTaken ? "Subname is already taken" : "Subname is available",
                 available: !isTaken
             });
-
         } catch (error: any) {
             logger.error(`Error in checkAvailability: ${error.message}`);
 
@@ -214,6 +287,14 @@ export default class ENSController {
                 });
             }
 
+            // check if the wallet already has the subname
+            const wallet = await Wallet.findById(walletId);
+            if (wallet && wallet.subname) {
+                return res.status(HttpStatus.BAD_REQUEST).json({
+                    success: false,
+                    message: "This wallet already has a subname assigned"
+                });
+            }
             const ensService = await this.initializeENSService(walletId, chain, appId);
 
             const isTaken = await ensService.isNameTaken(subName as string);
@@ -223,8 +304,9 @@ export default class ENSController {
                     message: "Subname is already taken"
                 });
             }
+
             const response: any = await ensService.claimName(subName as string);
-            console.log(response);
+
             if (response.status === 'error') {
                 const gasInfoMatch = response.error.match(
                     /maxFeePerGas:\s+([^\s]+)\s+gwei.*?maxPriorityFeePerGas:\s+([^\s]+)\s+gwei/s
@@ -282,14 +364,11 @@ export default class ENSController {
                 });
             }
 
-
-            // Check if ENS root already exists for this app
             const existingRoot = await ENSRoot.findOne({
                 ownerAppId: appId,
                 ens_name: ensName
             });
 
-            // If exists and is active, return the contract address
             if (existingRoot && existingRoot.status === 'active' && existingRoot.contractAddress) {
                 return res.status(HttpStatus.OK).json({
                     success: true,
@@ -301,7 +380,6 @@ export default class ENSController {
                 });
             }
 
-            // If exists but pending/failed, return the existing record
             if (existingRoot && existingRoot.status !== 'active') {
                 return res.status(HttpStatus.OK).json({
                     success: true,
@@ -314,15 +392,12 @@ export default class ENSController {
                 });
             }
 
-            // Initialize Web3 service (only handles data preparation)
             const web3Service = new Web3Service(chain);
-
-            // Prepare the transaction call data
             const preparedTx = await web3Service.prepareENSRegistrarCreation(
                 contract_config.ENS_FACTORY_CONTRACT_ADDRESS as `0x${string}`,
                 contract_config.ENS_FACTORY_CONTRACT_ABI,
                 ensName,
-                from // Optional from address (for gas estimation)
+                from
             );
 
             return res.status(HttpStatus.OK).json({
@@ -330,7 +405,6 @@ export default class ENSController {
                 message: "Transaction prepared successfully",
                 data: preparedTx
             });
-
         } catch (error: any) {
             logger.error(`Error in prepareCreateSubnameRegistrar: ${error.message}`);
 
@@ -352,7 +426,6 @@ export default class ENSController {
      * @api {post} /ens/namewrapper/prepare-approval Prepare NameWrapper Approval
      * @apiName PrepareNameWrapperApproval
      * @apiGroup ENS
-     * @apiDescription Prepares a setApprovalForAll transaction for the ENS NameWrapper contract
      */
     public async prepareNameWrapperTransfer(req: Request, res: Response) {
         try {
@@ -367,8 +440,6 @@ export default class ENSController {
                 });
             }
 
-
-            // Validate the chain
             const chainConfig = ChainUtils.getChainByName(chain);
             if (!chainConfig) {
                 return res.status(HttpStatus.BAD_REQUEST).json({
@@ -377,10 +448,7 @@ export default class ENSController {
                 });
             }
 
-            // Initialize Web3 service
             const web3Service = new Web3Service(chain);
-
-            // Prepare the transaction call data
             const preparedTx = await web3Service.prepareNameWrapperTransfer(
                 contract_config.ENS_NAMEWRAPPER_CONTRACT_ADDRESS as `0x${string}`,
                 contract_config.ENS_NAMEWRAPPER_CONTRACT_ABI,
@@ -395,7 +463,6 @@ export default class ENSController {
                 message: "NameWrapper approval transaction prepared successfully",
                 data: preparedTx
             });
-
         } catch (error: any) {
             logger.error(`Error in prepareNameWrapperTransfer: ${error.message}`);
 
@@ -413,12 +480,11 @@ export default class ENSController {
         }
     }
 
-
     /**
      * @api {post} /ens/roots/update-status Update ENS Root Status
      * @apiName UpdateENSRootStatus
      * @apiGroup ENS
-    */
+     */
     public async updateENSRootStatus(req: Request, res: Response) {
         try {
             const { status, contractAddress, txHash } = req.body;
@@ -460,7 +526,6 @@ export default class ENSController {
                 message: `ENS root status updated to ${status}`,
                 data: ensRoot
             });
-
         } catch (error: any) {
             logger.error(`Error in updateENSRootStatus: ${error.message}`);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
@@ -470,19 +535,21 @@ export default class ENSController {
         }
     }
 
-
-    // get all roots
+    /**
+     * @api {get} /ens/roots Get All Roots
+     * @apiName GetAllRoots
+     * @apiGroup ENS
+     */
     public async getAllRoots(req: Request, res: Response) {
         try {
             const { appId } = (req as any).developer_app;
-
             const roots = await ENSRoot.find({ ownerAppId: appId });
+
             return res.status(HttpStatus.OK).json({
                 success: true,
                 message: "All ENS roots fetched successfully",
                 data: roots
             });
-
         } catch (error: any) {
             logger.error(`Error in getAllRoots: ${error.message}`);
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({

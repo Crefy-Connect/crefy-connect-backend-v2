@@ -4,6 +4,7 @@ export interface IWallet extends Document {
     appId: string;
     email?: string;  // Made optional
     phoneNumber?: string;  // Added for SMS auth
+    subname?: string;
     socialType: string;
     address: string;
     publicKey: string;
@@ -25,6 +26,7 @@ const WalletSchema = new Schema<IWallet>({
     appId: { type: String, required: true },
     email: { type: String, required: false },  // Made optional
     phoneNumber: { type: String, required: false },  // Added for SMS auth
+    subname: { type: String, required: false },
     socialType: { type: String, required: true },
     address: { type: String, required: true, index: true },
     publicKey: { type: String, required: true },

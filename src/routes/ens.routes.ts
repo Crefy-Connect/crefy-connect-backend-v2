@@ -41,7 +41,7 @@ router.post(
     controller.claimSubname.bind(controller) as unknown as RequestHandler
 );
 
-// New NameWrapper transfer route
+// NameWrapper transfer route (Developer-only)
 router.post(
     "/namewrapper/prepare-transfer",
     validateApiKeyMiddleware as RequestHandler,
@@ -49,7 +49,7 @@ router.post(
     controller.prepareNameWrapperTransfer.bind(controller) as unknown as RequestHandler
 );
 
-// update root status
+// Update root status (Developer-only)
 router.post(
     "/roots/update-status",
     validateApiKeyMiddleware as RequestHandler,
@@ -57,11 +57,26 @@ router.post(
     controller.updateENSRootStatus.bind(controller) as unknown as RequestHandler
 );
 
+// Get all roots (Developer-only)
 router.get(
     "/roots",
     validateApiKeyMiddleware as RequestHandler,
     authenticateDeveloper as RequestHandler,
     controller.getAllRoots.bind(controller) as unknown as RequestHandler
+);
+
+// New Resolver routes (Public read, Developer write)
+router.get(
+    "/resolver/address",
+    validateApiKeyMiddleware as RequestHandler,
+    controller.getResolverAddress.bind(controller) as unknown as RequestHandler
+);
+
+router.post(
+    "/resolver/set-address",
+    validateApiKeyMiddleware as RequestHandler,
+    authenticateDeveloper as RequestHandler,
+    controller.prepareSetResolverAddress.bind(controller) as unknown as RequestHandler
 );
 
 export default router;

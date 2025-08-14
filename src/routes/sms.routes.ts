@@ -8,18 +8,18 @@ const router = express.Router();
 router.post('/login',
     validateApiKeyMiddleware as RequestHandler,
     checkNotAuthenticated as RequestHandler,
-    smsLoginController.smsWalletLogin.bind(smsLoginController)
+    smsLoginController.smsWalletLogin.bind(smsLoginController) as unknown as RequestHandler
 );
 router.post('/verify',
     validateApiKeyMiddleware as RequestHandler,
     checkNotAuthenticated as RequestHandler,
-    smsLoginController.walletVerify.bind(smsLoginController)
+    smsLoginController.walletVerify.bind(smsLoginController) as unknown as RequestHandler
 );
 
 router.post('/resend-otp',
     validateApiKeyMiddleware as RequestHandler,
     checkNotAuthenticated as RequestHandler,
-    smsLoginController.resendSmsOTP.bind(smsLoginController)
+    smsLoginController.resendSmsOTP.bind(smsLoginController) as unknown as RequestHandler
 );
 
 export default router;

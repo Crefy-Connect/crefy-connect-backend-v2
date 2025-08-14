@@ -8,6 +8,7 @@ import { ENSRoot } from "../models/ensroot.models.js";
 import { Web3Service } from "../services/web3.service.js";
 import { contract_config } from "../config/index.js";
 
+
 export default class ENSController {
     /**
      * Initialize ENS service for a specific user wallet

@@ -6,13 +6,14 @@ import {
     createPublicClient,
     http,
     type PublicClient,
-    toHex,
-    encodeAbiParameters,
-    parseAbiParameters
+    getAddress,
+    getContract
 } from "viem";
-import { normalize, labelhash, namehash } from "viem/ens";
+import { normalize, namehash } from "viem/ens";
 import { ChainUtils } from "../config/chains.config.js";
 import logger from "../utils/logger.js";
+import RESOLVER_ABI from "../utils/contracts/resolver.abi.js";
+import { ERC20_ABI } from "../utils/contracts/erc20.abi.js";
 
 interface PreparedTransaction {
     to: Address;
@@ -27,30 +28,6 @@ interface NameWrapperTransferParams {
     operator: Address;
     approved: boolean;
 }
-
-const RESOLVER_ABI = [
-    {
-        "inputs": [
-            { "internalType": "bytes32", "name": "node", "type": "bytes32" },
-            { "internalType": "address", "name": "a", "type": "address" }
-        ],
-        "name": "setAddr",
-        "outputs": [],
-        "stateMutability": "nonpayable",
-        "type": "function"
-    },
-    {
-        "inputs": [
-            { "internalType": "bytes32", "name": "node", "type": "bytes32" }
-        ],
-        "name": "addr",
-        "outputs": [
-            { "internalType": "address payable", "name": "", "type": "address" }
-        ],
-        "stateMutability": "view",
-        "type": "function"
-    }
-] as const;
 
 export class Web3Service {
     private publicClient!: PublicClient;
@@ -257,6 +234,130 @@ export class Web3Service {
         } catch (error) {
             logger.error(`Error preparing set resolver address: ${error}`);
             throw new Error(`Failed to prepare set resolver address: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    public async getNativeBalance(address: Address): Promise<bigint> {
+        try {
+            if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+                throw new Error("Invalid address format");
+            }
+
+            return await this.publicClient.getBalance({
+                address: getAddress(address) // Normalizes the address
+            });
+        } catch (error) {
+            logger.error(`Error fetching native balance: ${error}`);
+            throw new Error(`Failed to get native balance: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    public async getTokenBalance(tokenAddress: Address, walletAddress: Address): Promise<bigint> {
+        try {
+            const contract = getContract({
+                address: tokenAddress,
+                abi: ERC20_ABI,
+                client: this.publicClient
+            });
+
+            return await contract.read.balanceOf([walletAddress]);
+        } catch (error) {
+            logger.error(`Error fetching token balance: ${error}`);
+            throw new Error(`Failed to get token balance: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    public async getTokenMetadata(tokenAddress: Address): Promise<{ symbol: string, decimals: number, name: string }> {
+        try {
+            const contract = getContract({
+                address: tokenAddress,
+                abi: ERC20_ABI,
+                client: this.publicClient
+            });
+
+            const [symbol, decimals, name] = await Promise.all([
+                contract.read.symbol().catch(() => "UNKNOWN"),
+                contract.read.decimals().catch(() => 18),
+                contract.read.name().catch(() => "Unknown Token")
+            ]);
+
+            return { symbol, decimals, name };
+        } catch (error) {
+            logger.error(`Error fetching token metadata: ${error}`);
+            throw new Error(`Failed to get token metadata: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    public async getAllTokenBalances(
+        walletAddress: Address,
+        tokenAddresses: Address[]
+    ): Promise<Array<{
+        token: Address,
+        balance: bigint,
+        symbol: string,
+        decimals: number,
+        name: string
+    }>> {
+        try {
+            const balances = await Promise.all(
+                tokenAddresses.map(async (tokenAddress) => {
+                    try {
+                        const [balance, metadata] = await Promise.all([
+                            this.getTokenBalance(tokenAddress, walletAddress),
+                            this.getTokenMetadata(tokenAddress)
+                        ]);
+
+                        return {
+                            token: tokenAddress,
+                            balance,
+                            ...metadata
+                        };
+                    } catch (error) {
+                        logger.error(`Error fetching balance for token ${tokenAddress}: ${error}`);
+                        return {
+                            token: tokenAddress,
+                            balance: BigInt(0),
+                            symbol: "UNKNOWN",
+                            decimals: 18,
+                            name: "Unknown Token"
+                        };
+                    }
+                })
+            );
+
+            return balances;
+        } catch (error) {
+            logger.error(`Error fetching token balances: ${error}`);
+            throw new Error(`Failed to get token balances: ${error instanceof Error ? error.message : String(error)}`);
+        }
+    }
+
+    public async getWalletBalances(
+        walletAddress: Address,
+        tokenAddresses: Address[] = []
+    ): Promise<{
+        nativeBalance: bigint,
+        tokens: Array<{
+            token: Address,
+            balance: bigint,
+            symbol: string,
+            decimals: number,
+            name: string
+        }>
+    }> {
+        try {
+            const [nativeBalance, tokenBalances] = await Promise.all([
+                this.getNativeBalance(walletAddress),
+                this.getAllTokenBalances(walletAddress, tokenAddresses)
+            ]);
+
+            return {
+                nativeBalance,
+                tokens: tokenBalances.filter(token => token.balance > 0) // Only return tokens with balance
+            };
+        } catch (error) {
+            logger.error(`Error fetching wallet balances: ${error}`);
+            throw new Error(`Failed to get wallet balances: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 }

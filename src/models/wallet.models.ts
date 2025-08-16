@@ -24,8 +24,36 @@ export interface IWallet extends Document {
 
 const WalletSchema = new Schema<IWallet>({
     appId: { type: String, required: true },
-    email: { type: String, required: false },  // Made optional
-    phoneNumber: { type: String, required: false },  // Added for SMS auth
+    email: {
+        type: String,
+        required: false,
+        index: true,
+        validate: {
+            validator: function (v: string) {
+                // Only validate if both email and phoneNumber are missing
+                if (!v && !this.phoneNumber) {
+                    return false;
+                }
+                return true;
+            },
+            message: 'Either email or phoneNumber must be provided'
+        }
+    },
+    phoneNumber: {
+        type: String,
+        required: false,
+        index: true,
+        validate: {
+            validator: function (v: string) {
+                // Only validate if both email and phoneNumber are missing
+                if (!v && !this.email) {
+                    return false;
+                }
+                return true;
+            },
+            message: 'Either email or phoneNumber must be provided'
+        }
+    },
     subname: { type: String, required: false },
     socialType: { type: String, required: true },
     address: { type: String, required: true, index: true },
@@ -46,8 +74,24 @@ const WalletSchema = new Schema<IWallet>({
 
 // Updated index to include phoneNumber
 WalletSchema.index({ appId: 1, address: 1 }, { unique: true });
-WalletSchema.index({ appId: 1, email: 1 }, { unique: true, sparse: true });
-WalletSchema.index({ appId: 1, phoneNumber: 1 }, { unique: true, sparse: true });
+// Corrected indexes
+WalletSchema.index({ appId: 1, address: 1 }, { unique: true });
+
+// Email index - only applies when email exists
+WalletSchema.index({ appId: 1, email: 1 }, {
+    unique: true,
+    partialFilterExpression: {
+        email: { $exists: true, $ne: null }
+    }
+});
+
+// PhoneNumber index - only applies when phoneNumber exists
+WalletSchema.index({ appId: 1, phoneNumber: 1 }, {
+    unique: true,
+    partialFilterExpression: {
+        phoneNumber: { $exists: true, $ne: null }
+    }
+});
 
 WalletSchema.pre<IWallet>('save', function (next) {
     this.updatedAt = new Date();

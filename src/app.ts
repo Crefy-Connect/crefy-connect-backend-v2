@@ -90,7 +90,7 @@ class App {
                     message: 'HTTP Request',
                     method: req.method,
                     url: req.originalUrl,
-                    path: req.path,
+                    path: req.patfh,
                     status: res.statusCode,
                     duration: `${duration}ms`,
                     ip: clientIp,  // Use our safe IP getter

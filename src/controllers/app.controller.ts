@@ -80,9 +80,9 @@ class AppController {
     public async updateApp(req: Request, res: Response): Promise<Response> {
         try {
             const developerId = (req as any).user.id;
-            const app = (req as any).developer_app;
             const { name, description, redirectUrls, iconUrl } = req.body;
-
+            const appId = req.params.appId;
+            const app = await App.findOne({ _id: appId, developerId });
 
             if (!app) {
                 return res.status(404).json({

@@ -93,9 +93,19 @@ WalletSchema.index({ appId: 1, phoneNumber: 1 }, {
     }
 });
 
+
 WalletSchema.pre<IWallet>('save', function (next) {
     this.updatedAt = new Date();
+
+    if (!this.email) {
+        this.email = undefined;
+    }
+    if (!this.phoneNumber) {
+        this.phoneNumber = undefined;
+    }
+
     next();
 });
+
 
 export const Wallet = model<IWallet>('Wallet', WalletSchema);

@@ -6,6 +6,7 @@ import { ResponseHandler } from '../utils/response.handler.js';
 import SocketManager from '../services/socket.manager.js';
 
 const router = Router();
+const socketManager = SocketManager.getInstance();
 
 // ********************************************************************************************************
 // Email Wallet Social Login
@@ -36,6 +37,13 @@ router.post(
 router.get(
     '/google/:appId/initiate-google-auth',
     handleGoogleAuthSession,
+    (req: Request, res: Response, next: NextFunction) => {
+        // Store session ID for socket communication
+        if (req.session) {
+            (req.session as any).socketAuthId = req.query.socketAuthId as string || `auth-${Date.now()}`;
+        }
+        next();
+    },
     passport.authenticate('google', {
         session: true,
         scope: ['profile', 'email'],
@@ -43,7 +51,7 @@ router.get(
     })
 );
 
-// Enhanced Google OAuth callback handler
+// Enhanced Google OAuth callback handler with socket integration
 router.get('/google/callback',
     passport.authenticate('google', {
         session: true,
@@ -51,20 +59,89 @@ router.get('/google/callback',
     }),
     (req: Request, res: Response) => {
         console.log('Successful authentication, user:', req.user);
-        res.json({ success: true, user: req.user });
+        
+        // Send real-time success notification via socket
+        if (req.session?.socketAuthId) {
+            const successData = {
+                status: 'success',
+                user: req.user,
+                timestamp: new Date().toISOString()
+            };
+            
+            const emitted = socketManager.emitToSession(
+                req.session.socketAuthId,
+                'auth-success',
+                successData
+            );
+            
+            if (emitted) {
+                console.log(`Auth success sent via socket for session: ${req.session.socketAuthId}`);
+            }
+        }
+
+        // For direct browser requests, redirect to success page
+        if (req.headers.accept?.includes('text/html')) {
+            return res.redirect('/auth/success');
+        }
+
+        // For API requests, return JSON response
+        res.json({ 
+            success: true, 
+            user: req.user,
+            socketNotified: !!req.session?.socketAuthId
+        });
     }
 );
 
-// Google OAuth failure handler
+// Google OAuth failure handler with socket integration
 router.get('/google/failure', (req: Request, res: Response) => {
     const error = req.query.error || 'Authentication failed';
     const errorDescription = req.query.error_description || 'Unknown error occurred';
 
+    // Send real-time failure notification via socket
+    if (req.session?.socketAuthId) {
+        const failureData = {
+            status: 'error',
+            error,
+            errorDescription,
+            timestamp: new Date().toISOString()
+        };
+        
+        const emitted = socketManager.emitToSession(
+            req.session.socketAuthId,
+            'auth-error',
+            failureData
+        );
+        
+        if (emitted) {
+            console.log(`Auth failure sent via socket for session: ${req.session.socketAuthId}`);
+        }
+    }
+
+    // For direct browser requests, redirect to failure page
+    if (req.headers.accept?.includes('text/html')) {
+        return res.redirect('/auth/error');
+    }
+
+    // For API requests, return error response
     ResponseHandler.error(res, {
         message: 'Google authentication failed',
         error,
-        errorDescription
+        errorDescription,
+        socketNotified: !!req.session?.socketAuthId
     }, 401);
+});
+
+// Additional endpoint to check auth status via socket
+router.get('/google/auth-status/:socketAuthId', (req: Request, res: Response) => {
+    const { socketAuthId } = req.params;
+    
+    // This endpoint can be polled by clients waiting for socket notifications
+    res.json({
+        status: 'waiting',
+        socketAuthId,
+        message: 'Listening for socket authentication events'
+    });
 });
 
 export default router;

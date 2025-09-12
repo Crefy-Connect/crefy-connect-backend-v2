@@ -46,16 +46,17 @@ class App {
         this.server = http.createServer(this.app);
         this.io = new Server(this.server, {
             cors: {
-                origin: server_config.corsOrigins,
-                methods: ['GET', 'POST']
+                origin: "*", // Allow all origins
+                methods: ['GET', 'POST'],
+                credentials: false // Set to false when allowing all origins
             }
         });
 
         this.initializeMiddlewares();
         this.initializeSwagger();
         this.initializeDatabase();
-        this.initializeRoutes();
         this.initializeSocketIO();
+        this.initializeRoutes();
     }
 
     /**

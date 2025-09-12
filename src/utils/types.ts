@@ -2,7 +2,14 @@ import { ethers } from "ethers";
 import { IBundler } from "@biconomy/bundler";
 import { IPaymaster } from "@biconomy/paymaster";
 import { ChainId } from "@biconomy/core-types";
+import 'express-session';
 
+declare module 'express-session' {
+  interface SessionData {
+    socketAuthId?: string;
+    // Add other custom session properties here if needed
+  }
+}
 export type SmartAccountConfig = {
     signer: ethers.Signer;
     chainId: ChainId;

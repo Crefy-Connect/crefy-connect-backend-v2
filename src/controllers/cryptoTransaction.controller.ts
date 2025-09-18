@@ -4,7 +4,7 @@ import logger from "../utils/logger.js";
 import { Wallet } from "../models/wallet.models.js";
 import { ResponseHandler } from "../utils/response.handler.js";
 import { ChainUtils } from "../config/chains.config.js";
-import { ENSClaimable } from "src/models/ensclaimable.models.js";
+import { ENSClaimable } from "../models/ensclaimable.models.js";
 
 export class CryptoTransactionController {
   /**

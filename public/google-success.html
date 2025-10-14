@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Google OAuth Integration</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        padding: 40px;
+        width: 100%;
+        max-width: 500px;
+        text-align: center;
+      }
+
+      .logo {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 20px;
+        background: #4285f4;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 24px;
+        font-weight: bold;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 28px;
+      }
+
+      .subtitle {
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 16px;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        margin: 10px 0;
+        width: 100%;
+      }
+
+      .btn-google {
+        background: #4285f4;
+        color: white;
+        position: relative;
+      }
+
+      .btn-google:hover:not(:disabled) {
+        background: #357ae8;
+        transform: translateY(-2px);
+      }
+
+      .btn-google:disabled {
+        opacity: 0.8;
+        cursor: not-allowed;
+      }
+
+      .btn-google:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      .google-icon {
+        margin-right: 12px;
+        font-size: 18px;
+        font-weight: bold;
+      }
+
+      .btn-google.loading .google-icon {
+        animation: spin 1s linear infinite;
+      }
+
+      .status-container {
+        margin-top: 30px;
+        padding: 20px;
+        border-radius: 8px;
+        background: #f8f9fa;
+        text-align: left;
+      }
+
+      .status-title {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .status-content {
+        color: #666;
+        font-size: 14px;
+      }
+
+      .loading {
+        display: none;
+        margin: 20px 0;
+      }
+
+      .spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #4285f4;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .success {
+        color: #28a745;
+        display: none;
+        margin: 20px 0;
+      }
+
+      .error {
+        color: #dc3545;
+        display: none;
+        margin: 20px 0;
+      }
+
+      .user-info {
+        display: none;
+        margin-top: 20px;
+        padding: 15px;
+        background: #e8f5e8;
+        border-radius: 8px;
+        text-align: left;
+      }
+
+      .user-info h3 {
+        margin-bottom: 10px;
+        color: #2e7d32;
+      }
+
+      .user-detail {
+        margin: 5px 0;
+        font-size: 14px;
+      }
+
+      .retry-btn {
+        background: #dc3545;
+        color: white;
+        margin-top: 15px;
+      }
+
+      .retry-btn:hover {
+        background: #c82333;
+      }
+
+      .socket-id {
+        font-size: 12px;
+        color: #999;
+        margin-top: 10px;
+        word-break: break-all;
+      }
+
+      .reconnect-btn {
+        background: #6c757d;
+        color: white;
+        margin-top: 10px;
+        padding: 8px 16px;
+        font-size: 14px;
+      }
+
+      .reconnect-btn:hover {
+        background: #5a6268;
+      }
+
+      .connection-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 8px;
+      }
+
+      .connected {
+        background-color: #28a745;
+      }
+
+      .disconnected {
+        background-color: #dc3545;
+      }
+
+      .connecting {
+        background-color: #ff9800;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">G</div>
+      <h1>Google OAuth Integration</h1>
+      <p class="subtitle">Sign in with your Google account to continue</p>
+
+      <button id="googleAuthBtn" class="btn btn-google">
+        <span class="google-icon">G</span>
+        Sign in with Google
+      </button>
+
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p style="margin-top: 10px">Authenticating... Please wait</p>
+      </div>
+
+      <div id="success" class="success">
+        <p>✅ Authentication successful! Redirecting...</p>
+      </div>
+
+      <div id="error" class="error">
+        <p>❌ Authentication failed. Please try again.</p>
+        <button id="retryBtn" class="btn retry-btn">Try Again</button>
+      </div>
+
+      <div id="userInfo" class="user-info">
+        <h3>User Information</h3>
+        <div id="userDetails"></div>
+      </div>
+
+      <div class="status-container">
+        <p class="status-title">Connection Status:</p>
+        <p class="status-content" id="connectionStatus">
+          <span
+            class="connection-indicator disconnected"
+            id="connectionIndicator"
+          ></span>
+          <span id="connectionStatusText">Disconnected</span>
+        </p>
+        <p class="status-content" id="socketStatus">
+          <span
+            class="connection-indicator disconnected"
+            id="socketIndicator"
+          ></span>
+          <span id="socketStatusText">Socket not connected</span>
+        </p>
+        <p class="socket-id" id="socketIdDisplay">Session ID: -</p>
+        <button id="reconnectBtn" class="reconnect-btn" style="display: none">
+          Reconnect
+        </button>
+      </div>
+    </div>
+
+    <!-- Load Socket.IO only once -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
+    <script>
+      class GoogleAuthManager {
+        constructor() {
+          this.socket = null;
+          this.socketAuthId = null;
+          this.isAuthenticating = false;
+          this.authWindow = null;
+          this.checkInterval = null;
+          this.authTimeout = null;
+          this.baseUrl = "https://mutually-factual-weevil.ngrok-free.app";
+          this.reconnectionAttempts = 0;
+          this.maxReconnectionAttempts = 5;
+          this.init();
+        }
+
+        init() {
+          this.initializeSocket();
+          this.bindEvents();
+          this.updateConnectionStatus("Initializing...", "connecting");
+        }
+
+        initializeSocket() {
+          try {
+            // Close existing socket if any
+            if (this.socket) {
+              this.socket.removeAllListeners();
+              this.socket.disconnect();
+            }
+
+            this.updateSocketStatus("Connecting...", "connecting");
+
+            this.socket = io(this.baseUrl, {
+              transports: ["websocket", "polling"],
+              reconnectionAttempts: this.maxReconnectionAttempts,
+              timeout: 10000,
+              reconnectionDelay: 1000,
+              reconnectionDelayMax: 5000,
+              autoConnect: true,
+            });
+
+            this.socket.on("connect", () => {
+              this.reconnectionAttempts = 0;
+              this.updateSocketStatus("Connected", "connected");
+              this.generateSessionId();
+              document.getElementById("reconnectBtn").style.display = "none";
+            });
+
+            this.socket.on("disconnect", (reason) => {
+              this.updateSocketStatus(
+                `Disconnected: ${reason}`,
+                "disconnected"
+              );
+              document.getElementById("reconnectBtn").style.display = "block";
+            });
+
+            this.socket.on("connect_error", (error) => {
+              console.error("Socket connection error:", error);
+              this.updateSocketStatus("Connection failed", "disconnected");
+              document.getElementById("reconnectBtn").style.display = "block";
+            });
+
+            this.socket.on("reconnect_attempt", (attempt) => {
+              this.reconnectionAttempts = attempt;
+              this.updateSocketStatus(
+                `Reconnecting (${attempt}/${this.maxReconnectionAttempts})...`,
+                "connecting"
+              );
+            });
+
+            this.socket.on("reconnect_failed", () => {
+              this.updateSocketStatus("Reconnection failed", "disconnected");
+            });
+
+            // Listen for authentication events
+            this.socket.on("auth-success", (data) => {
+              this.handleAuthSuccess(data);
+            });
+
+            this.socket.on("auth-error", (data) => {
+              this.handleAuthError(data);
+            });
+          } catch (error) {
+            console.error("Failed to initialize socket:", error);
+            this.updateSocketStatus(
+              "Socket initialization failed",
+              "disconnected"
+            );
+            document.getElementById("reconnectBtn").style.display = "block";
+          }
+        }
+
+        generateSessionId() {
+          this.socketAuthId = `auth-${Date.now()}-${Math.random()
+            .toString(36)
+            .substr(2, 9)}`;
+          document.getElementById(
+            "socketIdDisplay"
+          ).textContent = `Session ID: ${this.socketAuthId}`;
+
+          if (this.socket && this.socket.connected) {
+            this.socket.emit("register-session", this.socketAuthId);
+            this.updateSocketStatus("Session registered", "connected");
+          }
+        }
+
+        bindEvents() {
+          const googleAuthBtn = document.getElementById("googleAuthBtn");
+          const retryBtn = document.getElementById("retryBtn");
+          const reconnectBtn = document.getElementById("reconnectBtn");
+
+          googleAuthBtn.addEventListener("click", () =>
+            this.initiateGoogleAuth()
+          );
+          retryBtn.addEventListener("click", () => this.retryAuth());
+          reconnectBtn.addEventListener("click", () => this.reconnectSocket());
+
+          // Handle page visibility changes
+          document.addEventListener("visibilitychange", () => {
+            if (!document.hidden && this.isAuthenticating) {
+              this.checkAuthStatus();
+            }
+          });
+        }
+
+        initiateGoogleAuth() {
+          if (!this.socket || !this.socket.connected) {
+            alert("Please wait for connection to establish...");
+            this.reconnectSocket();
+            return;
+          }
+
+          if (!this.socketAuthId) {
+            this.generateSessionId();
+          }
+
+          this.isAuthenticating = true;
+          this.showLoading();
+          this.hideError();
+          this.hideSuccess();
+
+          // Disable the button during authentication
+          const googleAuthBtn = document.getElementById("googleAuthBtn");
+          googleAuthBtn.disabled = true;
+          googleAuthBtn.classList.add("loading");
+
+          // Open Google OAuth in a popup window
+          const width = 500;
+          const height = 600;
+          const left = (screen.width - width) / 2;
+          const top = (screen.height - height) / 2;
+
+          this.authWindow = window.open(
+            `${this.baseUrl}/api/v1/oauth/google/initiate-google-auth?socketAuthId=${this.socketAuthId}`,
+            "GoogleAuth",
+            `width=${width},height=${height},left=${left},top=${top}`
+          );
+
+          // Check if popup was blocked
+          if (!this.authWindow) {
+            this.handleAuthError({
+              error: "Popup blocked",
+              errorDescription: "Please allow popups for this site",
+            });
+            googleAuthBtn.disabled = false;
+            googleAuthBtn.classList.remove("loading");
+            return;
+          }
+
+          // Check authentication status periodically
+          this.checkInterval = setInterval(() => {
+            if (this.authWindow.closed) {
+              clearInterval(this.checkInterval);
+              if (this.isAuthenticating) {
+                this.checkAuthStatus();
+              }
+            }
+          }, 1000);
+
+          // Set timeout for authentication
+          this.authTimeout = setTimeout(() => {
+            if (this.isAuthenticating) {
+              clearInterval(this.checkInterval);
+              this.handleAuthError({
+                error: "timeout",
+                errorDescription:
+                  "Authentication took too long. Please try again.",
+              });
+              googleAuthBtn.disabled = false;
+              googleAuthBtn.classList.remove("loading");
+            }
+          }, 300000); // 5 minutes timeout
+        }
+
+        handleAuthSuccess(data) {
+          this.isAuthenticating = false;
+          this.hideLoading();
+          this.showSuccess();
+
+          // Re-enable the button
+          const googleAuthBtn = document.getElementById("googleAuthBtn");
+          googleAuthBtn.disabled = false;
+          googleAuthBtn.classList.remove("loading");
+
+          // Clean up intervals and timeouts
+          if (this.checkInterval) clearInterval(this.checkInterval);
+          if (this.authTimeout) clearTimeout(this.authTimeout);
+
+          console.log("Authentication successful:", data);
+
+          // Display user information
+          this.displayUserInfo(data.user);
+
+          // Redirect after delay
+          setTimeout(() => {
+            window.location.href = "/dashboard"; // Change to your success redirect URL
+          }, 2000);
+        }
+
+        handleAuthError(data) {
+          this.isAuthenticating = false;
+          this.hideLoading();
+          this.showError();
+
+          // Re-enable the button
+          const googleAuthBtn = document.getElementById("googleAuthBtn");
+          googleAuthBtn.disabled = false;
+          googleAuthBtn.classList.remove("loading");
+
+          // Clean up intervals and timeouts
+          if (this.checkInterval) clearInterval(this.checkInterval);
+          if (this.authTimeout) clearTimeout(this.authTimeout);
+
+          console.error("Authentication failed:", data);
+
+          // Update error message if needed
+          const errorElement = document.querySelector(".error p");
+          if (errorElement && data.errorDescription) {
+            errorElement.textContent = `❌ ${data.errorDescription}`;
+          }
+        }
+
+        displayUserInfo(user) {
+          const userInfo = document.getElementById("userInfo");
+          const userDetails = document.getElementById("userDetails");
+
+          if (user && userDetails) {
+            userDetails.innerHTML = `
+                        <p class="user-detail"><strong>Name:</strong> ${
+                          user.displayName || "N/A"
+                        }</p>
+                        <p class="user-detail"><strong>Email:</strong> ${
+                          user.email || "N/A"
+                        }</p>
+                        <p class="user-detail"><strong>ID:</strong> ${
+                          user.id || user._id || "N/A"
+                        }</p>
+                    `;
+            userInfo.style.display = "block";
+          }
+        }
+
+        checkAuthStatus() {
+          if (this.socketAuthId) {
+            // You can implement additional status checks here
+            console.log("Checking auth status for session:", this.socketAuthId);
+          }
+        }
+
+        retryAuth() {
+          this.hideError();
+          this.generateSessionId();
+          this.initiateGoogleAuth();
+        }
+
+        reconnectSocket() {
+          this.updateSocketStatus("Reconnecting...", "connecting");
+          document.getElementById("reconnectBtn").style.display = "none";
+
+          if (this.socket) {
+            this.socket.disconnect();
+            // Small delay before reconnecting
+            setTimeout(() => {
+              this.socket.connect();
+            }, 500);
+          } else {
+            this.initializeSocket();
+          }
+        }
+
+        showLoading() {
+          document.getElementById("loading").style.display = "block";
+        }
+
+        hideLoading() {
+          document.getElementById("loading").style.display = "none";
+        }
+
+        showSuccess() {
+          document.getElementById("success").style.display = "block";
+        }
+
+        hideSuccess() {
+          document.getElementById("success").style.display = "none";
+        }
+
+        showError() {
+          document.getElementById("error").style.display = "block";
+        }
+
+        hideError() {
+          document.getElementById("error").style.display = "none";
+        }
+
+        updateConnectionStatus(message, status) {
+          const statusElement = document.getElementById("connectionStatusText");
+          const indicator = document.getElementById("connectionIndicator");
+
+          if (statusElement) statusElement.textContent = message;
+
+          // Update indicator
+          indicator.className = "connection-indicator";
+          if (status === "connected") indicator.classList.add("connected");
+          else if (status === "disconnected")
+            indicator.classList.add("disconnected");
+          else if (status === "connecting")
+            indicator.classList.add("connecting");
+        }
+
+        updateSocketStatus(message, status) {
+          const statusElement = document.getElementById("socketStatusText");
+          const indicator = document.getElementById("socketIndicator");
+
+          if (statusElement) statusElement.textContent = message;
+
+          // Update indicator
+          indicator.className = "connection-indicator";
+          if (status === "connected") indicator.classList.add("connected");
+          else if (status === "disconnected")
+            indicator.classList.add("disconnected");
+          else if (status === "connecting")
+            indicator.classList.add("connecting");
+        }
+      }
+
+      // Initialize the auth manager when page loads
+      document.addEventListener("DOMContentLoaded", () => {
+        window.authManager = new GoogleAuthManager();
+
+        // Update connection status
+        window.authManager.updateConnectionStatus("Ready", "connected");
+      });
+
+      // Handle page unload
+      window.addEventListener("beforeunload", () => {
+        if (window.authManager) {
+          // Clean up any open popups
+          if (
+            window.authManager.authWindow &&
+            !window.authManager.authWindow.closed
+          ) {
+            window.authManager.authWindow.close();
+          }
+
+          // Clean up intervals
+          if (window.authManager.checkInterval) {
+            clearInterval(window.authManager.checkInterval);
+          }
+
+          if (window.authManager.authTimeout) {
+            clearTimeout(window.authManager.authTimeout);
+          }
+
+          // Close socket
+          if (window.authManager.socket) {
+            window.authManager.socket.close();
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

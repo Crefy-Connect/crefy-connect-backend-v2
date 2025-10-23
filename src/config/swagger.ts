@@ -1,11 +1,13 @@
 import swaggerJsdoc from "swagger-jsdoc";
 import { server_config } from "./index.js";
+import { authSwagger } from "../swagger/auth.swagger.js";
 import { socialLoginsSwagger } from "../swagger/social.logins.swagger.js";
 import { cryptoTransactionSwagger } from "../swagger/crypto.transaction.swagger.js";
 import { developerSwagger } from "../swagger/developer.swagger.js";
 import { appSwagger } from "../swagger/app.swagger.js";
 import { ensSwagger } from "../swagger/ens.swagger.js";
 import { smsAuthSwagger } from "../swagger/sms.swagger.js";
+import { balanceSwagger } from "../swagger/balance.swagger.js";
 
 const baseDefinition = {
   openapi: "3.0.0",
@@ -63,30 +65,36 @@ const baseDefinition = {
           },
         },
       },
+      ...authSwagger.components?.schemas,
       ...socialLoginsSwagger.components?.schemas,
       ...smsAuthSwagger.components?.schemas,
       ...cryptoTransactionSwagger.components?.schemas,
       ...developerSwagger.components?.schemas,
       ...appSwagger.components?.schemas,
       ...ensSwagger.components?.schemas,
+      ...balanceSwagger.components?.schemas,
     },
   },
   // Merge tags and paths from socialLoginsSwagger
   tags: [
+    ...(authSwagger.tags || []),
     ...(socialLoginsSwagger.tags || []),
     ...(smsAuthSwagger.tags || []),
     ...(cryptoTransactionSwagger.tags || []),
     ...(developerSwagger.tags || []),
     ...(appSwagger.tags || []),
     ...(ensSwagger.tags || []),
+    ...(balanceSwagger.tags || []),
   ],
   paths: {
+    ...(authSwagger.paths || {}),
     ...(socialLoginsSwagger.paths || {}),
     ...(smsAuthSwagger.paths || {}),
     ...(cryptoTransactionSwagger.paths || {}),
     ...(developerSwagger.paths || {}),
     ...(appSwagger.paths || {}),
     ...(ensSwagger.paths || {}),
+    ...(balanceSwagger.paths || {}),
   },
 };
 

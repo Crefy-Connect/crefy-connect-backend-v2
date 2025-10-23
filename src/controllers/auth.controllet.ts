@@ -3,7 +3,7 @@ import { Wallet } from "../models/wallet.models.js";
 import logger from "../utils/logger.js";
 import { verifyJWT } from "../utils/auth.js";
 import { ApiError } from "../utils/apiError.js";
-import { ENSRoot } from "src/models/ensroot.models.js";
+import { ENSRoot } from "../models/ensroot.models.js";
 
 interface IWallet {
   email: string;

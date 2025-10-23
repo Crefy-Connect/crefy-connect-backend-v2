@@ -17,7 +17,7 @@ import { ResponseHandler } from "../utils/response.handler.js";
 import SocketManager from "../services/socket.manager.js";
 import crypto from "crypto";
 import { generateState, parseState } from "../config/passport.config.js";
-import { server_config } from "src/config/index.js";
+import { server_config } from "../config/index.js";
 
 const router = Router();
 const socketManager = SocketManager.getInstance();

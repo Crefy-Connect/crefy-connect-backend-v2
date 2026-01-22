@@ -11,7 +11,7 @@ class BalanceController {
    */
   public async getWalletBalances(
     req: Request,
-    res: Response
+    res: Response,
   ): Promise<Response> {
     try {
       const app = (req as any).developer_app;
@@ -91,11 +91,11 @@ class BalanceController {
    */
   public async getNetworkBalance(
     req: Request,
-    res: Response
+    res: Response,
   ): Promise<Response> {
     try {
       const wallet = (req as any).wallet;
-      const { network } = req.params;
+      const { network } = req.params as { network: string };
       const { token, tokenAddress } = req.query;
 
       const walletAddress = wallet.address;
@@ -111,7 +111,7 @@ class BalanceController {
         balance = await BalanceService.getTokenBalance(
           walletAddress,
           network,
-          tokenAddress
+          tokenAddress,
         );
       } else {
         balance = await BalanceService.getNativeBalance(walletAddress, network);
@@ -147,11 +147,11 @@ class BalanceController {
    */
   public async getWalletBalancesByAddress(
     req: Request,
-    res: Response
+    res: Response,
   ): Promise<Response> {
     try {
       const app = (req as any).developer_app;
-      const { walletAddress } = req.params;
+      const { walletAddress } = req.params as { walletAddress: string };
 
       // Validate wallet address
       if (!walletAddress) {
@@ -200,7 +200,10 @@ class BalanceController {
   public async getTokenBalance(req: Request, res: Response): Promise<Response> {
     try {
       const wallet = (req as any).wallet;
-      const { network, tokenAddress } = req.params;
+      const { network, tokenAddress } = req.params as {
+        network: string;
+        tokenAddress: string;
+      };
 
       const walletAddress = wallet.address;
 
@@ -211,7 +214,7 @@ class BalanceController {
       const balance = await BalanceService.getTokenBalance(
         walletAddress,
         network,
-        tokenAddress
+        tokenAddress,
       );
 
       return res.status(200).json({

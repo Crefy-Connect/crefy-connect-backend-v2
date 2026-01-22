@@ -71,7 +71,7 @@ router.get(
       sessionId: crypto.randomUUID(),
       frontendOrigin:
         req.headers.origin || "https://mutually-factual-weevil.ngrok-free.app",
-      appId: req.params.appId,
+      appId: req.params.appId as string,
       socketAuthId: socketAuthId,
       timestamp: Date.now(),
     };
@@ -638,7 +638,7 @@ router.get("/google/failure", (req: Request, res: Response) => {
 
 // Add a debug endpoint to check session and socket status
 router.get("/google/debug/:socketAuthId", (req: Request, res: Response) => {
-  const { socketAuthId } = req.params;
+  const { socketAuthId } = req.params as { socketAuthId: string };
 
   const sessionExists = socketManager.hasSession(socketAuthId);
   const sessionInfo = socketManager.getSessionInfo(socketAuthId);
@@ -679,7 +679,7 @@ router.get(
       sessionId: crypto.randomUUID(),
       frontendOrigin:
         req.headers.origin || "https://mutually-factual-weevil.ngrok-free.app",
-      appId: req.params.appId,
+      appId: req.params.appId as string,
       socketAuthId: socketAuthId,
       timestamp: Date.now(),
     };
@@ -1333,7 +1333,7 @@ router.get("/twitter/failure", (req: Request, res: Response) => {
 
 // Twitter debug endpoint
 router.get("/twitter/debug/:socketAuthId", (req: Request, res: Response) => {
-  const { socketAuthId } = req.params;
+  const { socketAuthId } = req.params as { socketAuthId: string };
 
   const sessionExists = socketManager.hasSession(socketAuthId);
   const sessionInfo = socketManager.getSessionInfo(socketAuthId);

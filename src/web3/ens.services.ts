@@ -15,7 +15,7 @@ import {
 } from "viem";
 import { AccountAbstractionService } from "./account-abstraction.js";
 import logger from "../utils/logger.js";
-import { Account, privateKeyToAccount } from "viem/accounts";
+import { Account, privateKeyToAccount } from "viem/accounts";®
 import { normalize, labelhash } from 'viem/ens';
 import { ChainUtils } from "../config/chains.config.js";
 import { formatEther } from "viem";

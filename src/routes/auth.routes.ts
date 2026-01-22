@@ -5,7 +5,6 @@ import AuthController from "../controllers/auth.controllet.js";
 import {
   checkWalletAuthenticated,
   validateApiKeyMiddleware,
-  authenticateDeveloper,
 } from "../middlewares/auth.middleware.js";
 
 const router = Router();

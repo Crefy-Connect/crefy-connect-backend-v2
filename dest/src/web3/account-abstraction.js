@@ -1,0 +1,675 @@
+// @ts-nocheck
+import { toNexusAccount, createBicoPaymasterClient, createSmartAccountClient } from "@biconomy/abstractjs";
+import { privateKeyToAccount } from "viem/accounts";
+import { erc20Abi, encodeFunctionData, parseUnits, http, parseEther, createPublicClient, createWalletClient, formatEther, formatUnits, } from "viem";
+import { config } from "dotenv";
+import logger from "../utils/logger.js";
+import { ChainUtils } from "../config/chains.config.js";
+config();
+// Constants
+const NEXUS_IMPLEMENTATION_ADDRESS = "0x000000008761E87F023f65c49DC9cb1C7EdFEaaf";
+const NEXUS_BOOTSTRAP_ADDRESS = "0x000000F5b753Fdd20C5CA2D7c1210b3Ab1EA5903";
+const EMPTY_HOOK_ADDRESS = "0x0000000000000000000000000000000000000001";
+// Minimum ETH required for deployment (0.01 ETH)
+const MIN_DEPLOYMENT_ETH = parseEther("0.01");
+// Gas buffer multiplier (50% buffer)
+const GAS_BUFFER_MULTIPLIER = 150n;
+/**
+ * Account Abstraction Service for managing smart contract wallets
+ * Supports multiple chains and account versions (V2, Nexus)
+ */
+export class AccountAbstractionService {
+    privateKey;
+    account;
+    chain;
+    chainConfig;
+    publicClient;
+    smartAccountClient;
+    accountVersion = "UNKNOWN";
+    cachedAccountAddress;
+    constructor({ privateKey, chainId = 84532, // Default to Base Sepolia
+     } = {}) {
+        this.validateConstructorParams(privateKey, chainId);
+        this.privateKey = this.formatPrivateKey(privateKey);
+        this.account = privateKeyToAccount(this.privateKey);
+        // Get chain and config from our chains configuration
+        this.chain = ChainUtils.getChainById(chainId);
+        this.chainConfig = ChainUtils.getAAConfigByChainId(chainId);
+        this.initializeClients();
+        logger.info(`AccountAbstractionService initialized for ${this.chain.name} (Chain ID: ${this.chain.id})`);
+        logger.info(`Account EOA: ${this.account.address}`);
+        logger.info(`Deployment required: ${this.chainConfig.requiresDeployment}`);
+    }
+    /**
+     * Validate constructor parameters
+     */
+    validateConstructorParams(privateKey, chainId) {
+        if (!privateKey) {
+            throw new Error("Private key is required");
+        }
+        if (!chainId || !ChainUtils.isChainSupported(chainId)) {
+            const supportedChains = ChainUtils.getAllSupportedChains()
+                .map((c) => `${c.name} (${c.id})`)
+                .join(", ");
+            throw new Error(`Unsupported chain ID: ${chainId}. Supported chains: ${supportedChains}`);
+        }
+        // Validate chain configuration
+        const validation = ChainUtils.validateChainConfig(chainId);
+        if (!validation.isValid) {
+            throw new Error(`Chain configuration invalid: ${validation.errors.join(", ")}`);
+        }
+    }
+    /**
+     * Format private key to ensure proper hex format
+     */
+    formatPrivateKey(privateKey) {
+        const formatted = privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
+        // Validate private key format
+        if (!/^0x[a-fA-F0-9]{64}$/.test(formatted)) {
+            throw new Error("Invalid private key format");
+        }
+        return formatted;
+    }
+    /**
+     * Initialize blockchain clients
+     */
+    initializeClients() {
+        try {
+            this.publicClient = createPublicClient({
+                chain: this.chain,
+                transport: http(this.chain.rpcUrls.default.http[0]),
+            });
+        }
+        catch (error) {
+            logger.error(`Failed to initialize public client: ${error.message}`);
+            throw new Error(`Failed to initialize blockchain connection for ${this.chain.name}`);
+        }
+    }
+    /**
+     * Create smart account client
+     */
+    async createSmartAccountClient() {
+        try {
+            if (!this.smartAccountClient) {
+                this.smartAccountClient = createSmartAccountClient({
+                    account: await toNexusAccount({
+                        signer: this.account,
+                        chain: this.chain,
+                        transport: http(),
+                    }),
+                    transport: http(this.chainConfig.bundlerUrl),
+                    paymaster: createBicoPaymasterClient({
+                        paymasterUrl: this.chainConfig.paymasterUrl,
+                    }),
+                });
+            }
+            return this.smartAccountClient;
+        }
+        catch (error) {
+            logger.error(`Failed to create smart account client: ${error.message}`);
+            throw new Error(`Failed to create smart account client: ${error.message}`);
+        }
+    }
+    /**
+     * Get smart contract account address
+     */
+    async getAccountAddress() {
+        try {
+            if (!this.cachedAccountAddress) {
+                const client = await this.createSmartAccountClient();
+                this.cachedAccountAddress = client.account.address;
+            }
+            return this.cachedAccountAddress;
+        }
+        catch (error) {
+            logger.error(`Failed to get account address: ${error.message}`);
+            throw new Error(`Failed to get account address: ${error.message}`);
+        }
+    }
+    /**
+     * Get EOA (Externally Owned Account) balance
+     */
+    async getEOABalance() {
+        try {
+            const balance = await this.publicClient.getBalance({
+                address: this.account.address,
+            });
+            return formatEther(balance);
+        }
+        catch (error) {
+            logger.error(`Failed to get EOA balance: ${error.message}`);
+            throw new Error(`Failed to get EOA balance: ${error.message}`);
+        }
+    }
+    /**
+     * Get smart contract account balance
+     */
+    async getAccountBalance() {
+        try {
+            const address = await this.getAccountAddress();
+            const balance = await this.publicClient.getBalance({
+                address: address,
+            });
+            return formatEther(balance);
+        }
+        catch (error) {
+            logger.error(`Failed to get account balance: ${error.message}`);
+            throw new Error(`Failed to get account balance: ${error.message}`);
+        }
+    }
+    /**
+     * Get ERC20 token balance
+     */
+    async getTokenBalance(tokenAddress, decimals = 18) {
+        try {
+            const address = await this.getAccountAddress();
+            const balance = await this.publicClient.readContract({
+                address: tokenAddress,
+                abi: erc20Abi,
+                functionName: "balanceOf",
+                args: [address],
+            });
+            return formatUnits(balance, decimals);
+        }
+        catch (error) {
+            logger.error(`Failed to get token balance: ${error.message}`);
+            throw new Error(`Failed to get token balance: ${error.message}`);
+        }
+    }
+    /**
+     * Get all token balances for supported tokens on current chain
+     */
+    async getAllTokenBalances() {
+        try {
+            const supportedTokens = ChainUtils.getSupportedTokens(this.chain.id);
+            const balances = await Promise.allSettled(supportedTokens.map(async (token) => {
+                if (token.isNative) {
+                    const balance = await this.getAccountBalance();
+                    return { token, balance };
+                }
+                else {
+                    const balance = await this.getTokenBalance(token.address, token.decimals);
+                    return { token, balance };
+                }
+            }));
+            return balances
+                .filter((result) => result.status === "fulfilled")
+                .map((result) => result.value);
+        }
+        catch (error) {
+            logger.error(`Failed to get all token balances: ${error.message}`);
+            throw new Error(`Failed to get all token balances: ${error.message}`);
+        }
+    }
+    /**
+     * Check if account is deployed on the blockchain
+     */
+    async isAccountDeployed(address) {
+        try {
+            const bytecode = await this.publicClient.getBytecode({
+                address: address,
+            });
+            return !!bytecode && bytecode !== "0x";
+        }
+        catch (error) {
+            logger.error(`Failed to check account deployment: ${error.message}`);
+            return false;
+        }
+    }
+    /**
+     * Detect account version (V2, Nexus, or Unknown)
+     */
+    async detectAccountVersion(address) {
+        const isDeployed = await this.isAccountDeployed(address);
+        if (!isDeployed) {
+            return "UNKNOWN";
+        }
+        try {
+            // Try Nexus implementation check first
+            try {
+                const implementation = await this.publicClient.readContract({
+                    address: address,
+                    abi: [
+                        {
+                            name: "implementation",
+                            type: "function",
+                            stateMutability: "view",
+                            inputs: [],
+                            outputs: [{ type: "address" }],
+                        },
+                    ],
+                    functionName: "implementation",
+                });
+                if (implementation === NEXUS_IMPLEMENTATION_ADDRESS) {
+                    return "NEXUS";
+                }
+            }
+            catch (e) {
+                // Implementation check failed, likely V2 account
+            }
+            // Fallback check for V2 account
+            const isV2 = await this.publicClient.readContract({
+                address: address,
+                abi: [
+                    {
+                        name: "isModuleEnabled",
+                        type: "function",
+                        stateMutability: "view",
+                        inputs: [{ type: "address" }],
+                        outputs: [{ type: "bool" }],
+                    },
+                ],
+                functionName: "isModuleEnabled",
+                args: [this.chainConfig.factoryAddress],
+            });
+            return isV2 ? "V2" : "UNKNOWN";
+        }
+        catch (error) {
+            logger.warn(`Could not detect account version: ${error.message}`);
+            return "UNKNOWN";
+        }
+    }
+    /**
+     * Get comprehensive account information
+     */
+    async getAccountInfo() {
+        try {
+            const smartAccountAddress = await this.getAccountAddress();
+            const isDeployed = await this.isAccountDeployed(smartAccountAddress);
+            const balance = await this.getAccountBalance();
+            const version = await this.detectAccountVersion(smartAccountAddress);
+            const supportedTokens = ChainUtils.getSupportedTokens(this.chain.id);
+            return {
+                address: smartAccountAddress, // Keep for backward compatibility
+                walletAddress: this.account.address, // The EOA that controls the smart account
+                smartAccountAddress, // Explicit smart account address
+                isDeployed,
+                balance,
+                version,
+                chainId: this.chain.id,
+                chainName: this.chain.name,
+                supportedTokens,
+            };
+        }
+        catch (error) {
+            logger.error(`Failed to get account info: ${error.message}`);
+            throw new Error(`Failed to get account info: ${error.message}`);
+        }
+    }
+    /**
+     * Estimate gas fees for transactions
+     */
+    async estimateGasFees() {
+        try {
+            const feeData = await this.publicClient.estimateFeesPerGas();
+            if (!feeData.maxFeePerGas || !feeData.maxPriorityFeePerGas) {
+                throw new Error("Failed to estimate gas fees");
+            }
+            return {
+                maxFeePerGas: feeData.maxFeePerGas,
+                maxPriorityFeePerGas: feeData.maxPriorityFeePerGas,
+                gasPrice: feeData.gasPrice,
+            };
+        }
+        catch (error) {
+            logger.error(`Failed to estimate gas fees: ${error.message}`);
+            throw new Error(`Failed to estimate gas fees: ${error.message}`);
+        }
+    }
+    /**
+     * Check if EOA has sufficient funds for deployment
+     */
+    async checkDeploymentFunds() {
+        try {
+            const eoaBalance = await this.publicClient.getBalance({
+                address: this.account.address,
+            });
+            const { maxFeePerGas } = await this.estimateGasFees();
+            const estimatedGas = BigInt(this.chainConfig.maxGasLimit) / 10n; // Conservative estimate
+            const estimatedCost = (estimatedGas * maxFeePerGas * GAS_BUFFER_MULTIPLIER) / 100n;
+            const required = estimatedCost > MIN_DEPLOYMENT_ETH ? estimatedCost : MIN_DEPLOYMENT_ETH;
+            return {
+                sufficient: eoaBalance >= required,
+                required: formatEther(required),
+                current: formatEther(eoaBalance),
+            };
+        }
+        catch (error) {
+            logger.error(`Failed to check deployment funds: ${error.message}`);
+            throw new Error(`Failed to check deployment funds: ${error.message}`);
+        }
+    }
+    /**
+     * Deploy smart contract account
+     */
+    async deployAccount() {
+        const address = await this.getAccountAddress();
+        try {
+            logger.info("Starting account deployment...");
+            // Check if already deployed
+            if (await this.isAccountDeployed(address)) {
+                logger.info("Account already deployed");
+                return { address, chainId: this.chain.id };
+            }
+            // Check funds
+            const fundsCheck = await this.checkDeploymentFunds();
+            if (!fundsCheck.sufficient) {
+                throw new Error(`Insufficient funds for deployment. Required: ${fundsCheck.required} ${this.chain.nativeCurrency.symbol}, ` +
+                    `Current: ${fundsCheck.current} ${this.chain.nativeCurrency.symbol}. Please send funds to ${this.account.address}`);
+            }
+            // Create EOA wallet client for deployment
+            const eoaClient = createWalletClient({
+                account: this.account,
+                chain: this.chain,
+                transport: http(this.chain.rpcUrls.default.http[0]),
+            });
+            // Prepare deployment transaction
+            const factoryData = encodeFunctionData({
+                abi: [
+                    {
+                        name: "deployAccount",
+                        type: "function",
+                        stateMutability: "nonpayable",
+                        inputs: [
+                            { type: "bytes", name: "data" },
+                            { type: "uint256", name: "index" },
+                        ],
+                        outputs: [],
+                    },
+                ],
+                functionName: "deployAccount",
+                args: ["0x", 0n],
+            });
+            const { maxFeePerGas, maxPriorityFeePerGas } = await this.estimateGasFees();
+            // Send deployment transaction
+            const hash = await eoaClient.sendTransaction({
+                to: this.chainConfig.factoryAddress,
+                data: factoryData,
+                maxFeePerGas: (maxFeePerGas * GAS_BUFFER_MULTIPLIER) / 100n,
+                maxPriorityFeePerGas: (maxPriorityFeePerGas * GAS_BUFFER_MULTIPLIER) / 100n,
+                value: 0n,
+            });
+            // Wait for confirmation
+            const receipt = await this.publicClient.waitForTransactionReceipt({ hash });
+            console.log("receipt", receipt);
+            if (receipt.status === "success") {
+                logger.info(`Account deployed successfully: ${receipt.transactionHash}`);
+                this.accountVersion = "V2";
+                return {
+                    address,
+                    hash,
+                    receipt,
+                    gasUsed: receipt.gasUsed,
+                    effectiveGasPrice: receipt.effectiveGasPrice,
+                    chainId: this.chain.id,
+                };
+            }
+            else {
+                throw new Error("Deployment transaction failed");
+            }
+        }
+        catch (error) {
+            logger.error(`Account deployment failed: ${error.message}`);
+            return {
+                address,
+                error: new Error(`Deployment failed: ${error.message}`),
+                chainId: this.chain.id,
+            };
+        }
+    }
+    /**
+     * Send ETH transaction
+     */
+    async sendETH(to, value, mode) {
+        try {
+            // Validate inputs
+            if (!to || !/^0x[a-fA-F0-9]{40}$/.test(to)) {
+                throw new Error("Invalid recipient address");
+            }
+            const valueInWei = parseEther(value);
+            if (valueInWei <= 0n) {
+                throw new Error("Value must be greater than 0");
+            }
+            // Use chain's gas policy if mode not specified
+            const transactionMode = mode || this.chainConfig.gasPolicy === "HYBRID" ? "SPONSORED" : this.chainConfig.gasPolicy;
+            return await this.sendTransaction({
+                to,
+                value: valueInWei.toString(),
+                mode: transactionMode,
+            });
+        }
+        catch (error) {
+            logger.error(`Failed to send ${this.chain.nativeCurrency.symbol}: ${error.message}`);
+            throw new Error(`Failed to send ${this.chain.nativeCurrency.symbol}: ${error.message}`);
+        }
+    }
+    /**
+     * Send ERC20 token transaction by symbol
+     */
+    async sendTokenBySymbol(symbol, to, amount, mode) {
+        try {
+            const token = ChainUtils.getTokenBySymbol(this.chain.id, symbol);
+            if (!token) {
+                const supportedTokens = ChainUtils.getSupportedTokens(this.chain.id)
+                    .map((t) => t.symbol)
+                    .join(", ");
+                throw new Error(`Token ${symbol} not supported on ${this.chain.name}. Supported tokens: ${supportedTokens}`);
+            }
+            if (token.isNative) {
+                return await this.sendETH(to, amount, mode);
+            }
+            return await this.sendERC20(token.address, to, amount, token.decimals, mode);
+        }
+        catch (error) {
+            logger.error(`Failed to send ${symbol}: ${error.message}`);
+            throw new Error(`Failed to send ${symbol}: ${error.message}`);
+        }
+    }
+    /**
+     * Send ERC20 token transaction
+     */
+    async sendERC20(tokenAddress, to, amount, decimals = 18, mode) {
+        try {
+            // Validate inputs
+            if (!tokenAddress || !/^0x[a-fA-F0-9]{40}$/.test(tokenAddress)) {
+                throw new Error("Invalid token address");
+            }
+            if (!to || !/^0x[a-fA-F0-9]{40}$/.test(to)) {
+                throw new Error("Invalid recipient address");
+            }
+            const amountInUnits = parseUnits(amount, decimals);
+            if (amountInUnits <= 0n) {
+                throw new Error("Amount must be greater than 0");
+            }
+            // Use chain's gas policy if mode not specified
+            const transactionMode = mode || this.chainConfig.gasPolicy === "HYBRID" ? "SPONSORED" : this.chainConfig.gasPolicy;
+            return await this.executeContractFunction({
+                contractAddress: tokenAddress,
+                abi: erc20Abi,
+                functionName: "transfer",
+                args: [to, amountInUnits],
+            }, transactionMode);
+        }
+        catch (error) {
+            logger.error(`Failed to send ERC20: ${error.message}`);
+            throw new Error(`Failed to send ERC20: ${error.message}`);
+        }
+    }
+    /**
+     * Execute contract function
+     */
+    async executeContractFunction(contractCall, mode) {
+        try {
+            // Validate contract call
+            if (!contractCall.contractAddress || !/^0x[a-fA-F0-9]{40}$/.test(contractCall.contractAddress)) {
+                throw new Error("Invalid contract address");
+            }
+            // Use chain's gas policy if mode not specified
+            const transactionMode = mode || this.chainConfig.gasPolicy === "HYBRID" ? "SPONSORED" : this.chainConfig.gasPolicy;
+            return await this.sendTransaction({
+                contractCall,
+                mode: transactionMode,
+            });
+        }
+        catch (error) {
+            logger.error(`Failed to execute contract function: ${error.message}`);
+            throw new Error(`Failed to execute contract function: ${error.message}`);
+        }
+    }
+    /**
+     * Main transaction sending method
+     */
+    async sendTransaction(params) {
+        logger.info("Starting transaction process...");
+        try {
+            const client = await this.createSmartAccountClient();
+            const address = await this.getAccountAddress();
+            // Ensure account is deployed if required
+            if (this.chainConfig.requiresDeployment && !(await this.isAccountDeployed(address))) {
+                logger.info("Account not deployed, deploying first...");
+                const deployResult = await this.deployAccount();
+                if (deployResult.error) {
+                    return deployResult;
+                }
+            }
+            // Prepare transaction calls
+            const calls = await this.prepareCalls(params);
+            const { maxFeePerGas, maxPriorityFeePerGas } = await this.estimateGasFees();
+            // Attempt transaction with fallback
+            let hash;
+            try {
+                logger.info(`Attempting ${params.mode || this.chainConfig.gasPolicy} transaction...`);
+                hash = await client.sendTransaction({
+                    calls,
+                    maxFeePerGas,
+                    maxPriorityFeePerGas,
+                    mode: params.mode || this.chainConfig.gasPolicy,
+                });
+            }
+            catch (sponsoredError) {
+                if (params.mode !== "FEE" && this.shouldFallbackToFee(sponsoredError)) {
+                    console.log("sponsoredError", sponsoredError);
+                    logger.warn("Sponsored transaction failed, attempting fee-paid transaction...");
+                    console.log('Gas fees in ETH', {
+                        maxFeePerGas: formatEther(maxFeePerGas),
+                        maxPriorityFeePerGas: formatEther(maxPriorityFeePerGas),
+                    });
+                    hash = await client.sendTransaction({
+                        calls,
+                        maxFeePerGas,
+                        maxPriorityFeePerGas,
+                        mode: "FEE",
+                    });
+                }
+                else {
+                    throw sponsoredError;
+                }
+            }
+            logger.info(`Transaction submitted: ${hash}`);
+            const receipt = await client.waitForTransactionReceipt({ hash });
+            console.log("receipt", receipt);
+            if (receipt.status === "success") {
+                logger.info(`Transaction confirmed: ${receipt.transactionHash}`);
+                return {
+                    address,
+                    hash,
+                    receipt,
+                    gasUsed: receipt.gasUsed,
+                    effectiveGasPrice: receipt.effectiveGasPrice,
+                    chainId: this.chain.id,
+                };
+            }
+            else {
+                throw new Error("Transaction failed");
+            }
+        }
+        catch (error) {
+            logger.error(`Transaction failed: ${error.message}`);
+            const address = await this.getAccountAddress().catch(() => "unknown");
+            return {
+                address,
+                error: new Error(`Transaction failed: ${error.message}`),
+                chainId: this.chain.id,
+            };
+        }
+    }
+    /**
+     * Prepare transaction calls from parameters
+     */
+    async prepareCalls(params) {
+        const calls = [];
+        if (params.contractCall) {
+            const { contractAddress, abi, functionName, args = [], value = "0" } = params.contractCall;
+            calls.push({
+                to: contractAddress,
+                data: encodeFunctionData({ abi, functionName, args }),
+                value: BigInt(value),
+            });
+        }
+        else if (params.to) {
+            calls.push({
+                to: params.to,
+                value: params.value ? BigInt(params.value) : 0n,
+                data: params.data || undefined,
+            });
+        }
+        if (calls.length === 0) {
+            throw new Error("No valid transaction calls prepared");
+        }
+        return calls;
+    }
+    /**
+     * Determine if should fallback to fee mode
+     */
+    shouldFallbackToFee(error) {
+        const errorMessage = error.message?.toLowerCase() || "";
+        return errorMessage.includes("aa33") || errorMessage.includes("reverted") || errorMessage.includes("paymaster");
+    }
+    /**
+     * Get transaction URL for block explorer
+     */
+    getTransactionUrl(txHash) {
+        return ChainUtils.getTransactionUrl(this.chain.id, txHash);
+    }
+    /**
+     * Get address URL for block explorer
+     */
+    getAddressUrl(address) {
+        const addr = address || this.cachedAccountAddress;
+        if (!addr)
+            return undefined;
+        return ChainUtils.getAddressUrl(this.chain.id, addr);
+    }
+    /**
+     * Get current chain information
+     */
+    getChainInfo() {
+        return {
+            id: this.chain.id,
+            name: this.chain.name,
+            isTestnet: this.chain.isTestnet,
+            nativeCurrency: this.chain.nativeCurrency,
+            blockExplorer: this.chain.blockExplorers?.default?.url || "",
+        };
+    }
+    /**
+     * Get supported chains (static method)
+     */
+    static getSupportedChains() {
+        return ChainUtils.getAllSupportedChains();
+    }
+    /**
+     * Check if chain is supported (static method)
+     */
+    static isChainSupported(chainId) {
+        return ChainUtils.isChainSupported(chainId);
+    }
+    /**
+     * Get chain statistics (static method)
+     */
+    static getChainStats() {
+        return ChainUtils.getChainStats();
+    }
+}
+// Re-export chain utilities and types
+export { ChainUtils };

@@ -29,19 +29,19 @@ router.post(
   "/email/email-login",
   validateApiKeyMiddleware as RequestHandler,
   checkNotAuthenticated as RequestHandler,
-  SocialLoginsController.emailWalletLogin as unknown as RequestHandler
+  SocialLoginsController.emailWalletLogin as unknown as RequestHandler,
 );
 
 router.post(
   "/email/wallet-verify",
   validateApiKeyMiddleware as RequestHandler,
-  SocialLoginsController.walletVerify as unknown as RequestHandler
+  SocialLoginsController.walletVerify as unknown as RequestHandler,
 );
 
 router.post(
   "/email/resend-email-otp",
   validateApiKeyMiddleware as RequestHandler,
-  SocialLoginsController.resendEmailOTP as unknown as RequestHandler
+  SocialLoginsController.resendEmailOTP as unknown as RequestHandler,
 );
 
 // ***************************************************************************************************** //
@@ -95,12 +95,15 @@ router.get(
 
     // Build the Google OAuth URL manually to bypass Passport's state handling
     const googleAuthUrl = new URL(
-      "https://accounts.google.com/o/oauth2/v2/auth"
+      "https://accounts.google.com/o/oauth2/v2/auth",
     );
     googleAuthUrl.searchParams.set("client_id", process.env.GOOGLE_CLIENT_ID!);
     googleAuthUrl.searchParams.set(
       "redirect_uri",
-      new URL("/api/v1/oauth/google/callback", server_config.baseUrl).toString()
+      new URL(
+        "/api/v1/oauth/google/callback",
+        server_config.baseUrl,
+      ).toString(),
     );
     googleAuthUrl.searchParams.set("response_type", "code");
     googleAuthUrl.searchParams.set("scope", "profile email");
@@ -111,7 +114,7 @@ router.get(
     console.log("Redirecting to Google OAuth URL:", googleAuthUrl.toString());
 
     res.redirect(googleAuthUrl.toString());
-  }
+  },
 );
 
 // Enhanced Google OAuth callback with state verification
@@ -187,7 +190,7 @@ router.get("/google/callback", (async (req: Request, res: Response) => {
         client_secret: process.env.GOOGLE_CLIENT_SECRET!,
         redirect_uri: new URL(
           "/api/v1/oauth/google/callback",
-          server_config.baseUrl
+          server_config.baseUrl,
         ).toString(),
         grant_type: "authorization_code",
       }),
@@ -209,7 +212,7 @@ router.get("/google/callback", (async (req: Request, res: Response) => {
         headers: {
           Authorization: `Bearer ${tokens.access_token}`,
         },
-      }
+      },
     );
 
     if (!profileResponse.ok) {
@@ -263,7 +266,7 @@ router.get("/google/callback", (async (req: Request, res: Response) => {
             req,
             res,
             "Authentication failed",
-            socketAuthId
+            socketAuthId,
           );
         }
 
@@ -282,7 +285,7 @@ router.get("/google/callback", (async (req: Request, res: Response) => {
           if (finalSocketAuthId) {
             console.log(
               "📡 Emitting auth-success for socketAuthId:",
-              finalSocketAuthId
+              finalSocketAuthId,
             );
 
             const successData = {
@@ -305,12 +308,12 @@ router.get("/google/callback", (async (req: Request, res: Response) => {
               const emitted = socketManager.emitToSession(
                 finalSocketAuthId,
                 "auth-success",
-                successData
+                successData,
               );
 
               console.log(
                 "Socket emission result:",
-                emitted ? "✅ Success" : "❌ Failed"
+                emitted ? "✅ Success" : "❌ Failed",
               );
             } catch (socketError) {
               console.error("❌ Socket emission error:", socketError);
@@ -512,7 +515,7 @@ router.get("/google/callback", (async (req: Request, res: Response) => {
 
           return res.send(successHtml);
         });
-      }
+      },
     );
   } catch (error) {
     console.error("❌ OAuth callback error:", error);
@@ -525,7 +528,7 @@ function handleAuthFailure(
   req: Request,
   res: Response,
   error: string,
-  socketAuthId: string | null = null
+  socketAuthId: string | null = null,
 ) {
   if (socketAuthId) {
     socketManager.emitToSession(socketAuthId, "auth-error", {
@@ -548,7 +551,7 @@ function handleAuthFailure(
       socketNotified: !!socketAuthId,
       socketAuthId: socketAuthId,
     },
-    401
+    401,
   );
 }
 
@@ -599,11 +602,11 @@ router.get("/google/failure", (req: Request, res: Response) => {
       const emitted = socketManager.emitToSession(
         socketAuthId,
         "auth-error",
-        failureData
+        failureData,
       );
       console.log(
         "Socket emission result:",
-        emitted ? "✅ Success" : "❌ Failed"
+        emitted ? "✅ Success" : "❌ Failed",
       );
     } catch (socketError) {
       console.error("❌ Failed to emit auth-error via socket:", socketError);
@@ -615,7 +618,7 @@ router.get("/google/failure", (req: Request, res: Response) => {
   // For direct browser requests, redirect to failure page
   if (req.headers.accept?.includes("text/html")) {
     return res.redirect(
-      `/auth/error?error=${encodeURIComponent(error as string)}`
+      `/auth/error?error=${encodeURIComponent(error as string)}`,
     );
   }
 
@@ -629,7 +632,7 @@ router.get("/google/failure", (req: Request, res: Response) => {
       socketNotified: !!socketAuthId,
       socketAuthId: socketAuthId,
     },
-    401
+    401,
   );
 });
 
@@ -713,7 +716,7 @@ router.get(
       // For desktop apps, use OOB flow
       passport.authenticate("twitter", {
         callbackURL: "oob", // Out-of-band for desktop apps
-      })(req, res, (err) => {
+      } as any)(req, res, (err: any) => {
         if (err) {
           console.error("❌ Twitter OAuth initiation error:", err);
           return handleTwitterAuthFailure(req, res, err.message, socketAuthId);
@@ -724,123 +727,119 @@ router.get(
       // For web apps, use callback URL
       const callbackUrl = new URL(
         "/api/v1/oauth/twitter/callback",
-        server_config.baseUrl
+        server_config.baseUrl,
       );
 
       passport.authenticate("twitter", {
         callbackURL: callbackUrl.toString(),
-      })(req, res, (err) => {
+      } as any)(req, res, (err: any) => {
         if (err) {
           console.error("❌ Twitter OAuth initiation error:", err);
           return handleTwitterAuthFailure(req, res, err.message, socketAuthId);
         }
       });
     }
-  }
+  },
 );
 
 // Twitter OAuth callback - ENHANCED VERSION
-router.get(
-  "/twitter/callback",
-  (req: Request, res: Response, next: NextFunction) => {
-    console.log("🐦 Twitter OAuth callback initiated");
+router.get("/twitter/callback", ((
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  console.log("🐦 Twitter OAuth callback initiated");
 
-    const oauthToken = req.query.oauth_token as string;
-    const oauthVerifier = req.query.oauth_verifier as string;
-    const denied = req.query.denied as string;
-    const receivedState = req.query.state as string;
+  const oauthToken = req.query.oauth_token as string;
+  const oauthVerifier = req.query.oauth_verifier as string;
+  const denied = req.query.denied as string;
+  const receivedState = req.query.state as string;
 
-    if (denied) {
-      console.error("❌ User denied Twitter authorization");
-      return handleTwitterAuthFailure(
-        req,
-        res,
-        "User denied authorization",
-        null
-      );
-    }
-
-    // Check if this is an OOB flow (PIN-based)
-    if (oauthToken && !oauthVerifier) {
-      console.log("🐦 OOB flow detected - rendering PIN entry page");
-      return renderPinEntryPage(req, res, oauthToken);
-    }
-
-    if (!oauthToken || !oauthVerifier) {
-      console.error("❌ Missing OAuth token or verifier");
-      return handleTwitterAuthFailure(
-        req,
-        res,
-        "Missing OAuth parameters",
-        null
-      );
-    }
-
-    // STATE VERIFICATION for web flow
-    if (receivedState) {
-      const sessionState = (req.session as any)?.oauthState;
-      if (!sessionState || receivedState !== sessionState) {
-        console.error("❌ Twitter State parameter mismatch");
-
-        let socketAuthId = null;
-        try {
-          const stateObj = parseState(receivedState);
-          socketAuthId = stateObj.socketAuthId;
-        } catch (error) {
-          console.error("Error parsing state for socketAuthId:", error);
-        }
-
-        if (socketAuthId) {
-          socketManager.emitToSession(socketAuthId, "auth-error", {
-            status: "error",
-            error: "Authentication failed",
-            errorDescription: "Security verification failed. Please try again.",
-            timestamp: new Date().toISOString(),
-          });
-        }
-
-        return res.redirect("/api/v1/oauth/twitter/failure");
-      }
-
-      // Clear the state from session after use
-      if (req.session) {
-        (req.session as any).oauthState = null;
-      }
-    }
-
-    // Process authentication
-    passport.authenticate(
-      "twitter",
-      {
-        failureRedirect: "/api/v1/oauth/twitter/failure",
-        failureMessage: true,
-      },
-      (err: any, user: any, info: any) => {
-        if (err) {
-          console.error("❌ Twitter authentication error:", err);
-          return handleTwitterAuthFailure(
-            req,
-            res,
-            err.message,
-            user?.socketAuthId
-          );
-        }
-
-        if (!user) {
-          console.error("❌ No user returned from Twitter authentication");
-          return handleTwitterAuthFailure(
-            req,
-            res,
-            "Authentication failed",
-            null
-          );
-        }
-
-        handleTwitterSuccess(req, res, user);
-      }
-    )(req, res, next);
+  if (denied) {
+    console.error("❌ User denied Twitter authorization");
+    return handleTwitterAuthFailure(
+      req,
+      res,
+      "User denied authorization",
+      null,
+    );
   }
-);
+
+  // Check if this is an OOB flow (PIN-based)
+  if (oauthToken && !oauthVerifier) {
+    console.log("🐦 OOB flow detected - rendering PIN entry page");
+    return renderPinEntryPage(req, res, oauthToken);
+  }
+
+  if (!oauthToken || !oauthVerifier) {
+    console.error("❌ Missing OAuth token or verifier");
+    return handleTwitterAuthFailure(req, res, "Missing OAuth parameters", null);
+  }
+
+  // STATE VERIFICATION for web flow
+  if (receivedState) {
+    const sessionState = (req.session as any)?.oauthState;
+    if (!sessionState || receivedState !== sessionState) {
+      console.error("❌ Twitter State parameter mismatch");
+
+      let socketAuthId = null;
+      try {
+        const stateObj = parseState(receivedState);
+        socketAuthId = stateObj.socketAuthId;
+      } catch (error) {
+        console.error("Error parsing state for socketAuthId:", error);
+      }
+
+      if (socketAuthId) {
+        socketManager.emitToSession(socketAuthId, "auth-error", {
+          status: "error",
+          error: "Authentication failed",
+          errorDescription: "Security verification failed. Please try again.",
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return res.redirect("/api/v1/oauth/twitter/failure");
+    }
+
+    // Clear the state from session after use
+    if (req.session) {
+      (req.session as any).oauthState = null;
+    }
+  }
+
+  // Process authentication
+  passport.authenticate(
+    "twitter",
+    {
+      failureRedirect: "/api/v1/oauth/twitter/failure",
+      failureMessage: true,
+    },
+    (err: any, user: any, info: any) => {
+      if (err) {
+        console.error("❌ Twitter authentication error:", err);
+        return handleTwitterAuthFailure(
+          req,
+          res,
+          err.message,
+          user?.socketAuthId,
+        );
+      }
+
+      if (!user) {
+        console.error("❌ No user returned from Twitter authentication");
+        return handleTwitterAuthFailure(
+          req,
+          res,
+          "Authentication failed",
+          null,
+        );
+      }
+
+      handleTwitterSuccess(req, res, user);
+    },
+  )(req, res, next);
+}) as RequestHandler);
 
 // Helper function to render PIN entry page
 function renderPinEntryPage(req: Request, res: Response, oauthToken: string) {
@@ -982,56 +981,57 @@ function renderPinEntryPage(req: Request, res: Response, oauthToken: string) {
 }
 
 // PIN verification endpoint
-router.get(
-  "/twitter/pin-verify",
-  (req: Request, res: Response, next: NextFunction) => {
-    const oauthToken = req.query.oauth_token as string;
-    const oauthVerifier = req.query.oauth_verifier as string;
+router.get("/twitter/pin-verify", ((
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const oauthToken = req.query.oauth_token as string;
+  const oauthVerifier = req.query.oauth_verifier as string;
 
-    if (!oauthToken || !oauthVerifier) {
-      return handleTwitterAuthFailure(
-        req,
-        res,
-        "Missing PIN verification parameters",
-        null
-      );
-    }
-
-    console.log("🐦 Processing PIN verification");
-
-    // Continue with the normal OAuth flow using the PIN as verifier
-    passport.authenticate(
-      "twitter",
-      {
-        failureRedirect: "/api/v1/oauth/twitter/failure",
-        failureMessage: true,
-      },
-      (err: any, user: any, info: any) => {
-        if (err) {
-          console.error("❌ Twitter PIN verification error:", err);
-          return handleTwitterAuthFailure(
-            req,
-            res,
-            err.message,
-            user?.socketAuthId
-          );
-        }
-
-        if (!user) {
-          console.error("❌ No user returned from Twitter PIN verification");
-          return handleTwitterAuthFailure(
-            req,
-            res,
-            "PIN verification failed",
-            null
-          );
-        }
-
-        handleTwitterSuccess(req, res, user);
-      }
-    )(req, res, next);
+  if (!oauthToken || !oauthVerifier) {
+    return handleTwitterAuthFailure(
+      req,
+      res,
+      "Missing PIN verification parameters",
+      null,
+    );
   }
-);
+
+  console.log("🐦 Processing PIN verification");
+
+  // Continue with the normal OAuth flow using the PIN as verifier
+  passport.authenticate(
+    "twitter",
+    {
+      failureRedirect: "/api/v1/oauth/twitter/failure",
+      failureMessage: true,
+    },
+    (err: any, user: any, info: any) => {
+      if (err) {
+        console.error("❌ Twitter PIN verification error:", err);
+        return handleTwitterAuthFailure(
+          req,
+          res,
+          err.message,
+          user?.socketAuthId,
+        );
+      }
+
+      if (!user) {
+        console.error("❌ No user returned from Twitter PIN verification");
+        return handleTwitterAuthFailure(
+          req,
+          res,
+          "PIN verification failed",
+          null,
+        );
+      }
+
+      handleTwitterSuccess(req, res, user);
+    },
+  )(req, res, next);
+}) as RequestHandler);
 
 // Helper function to handle Twitter success
 function handleTwitterSuccess(req: Request, res: Response, user: any) {
@@ -1042,7 +1042,7 @@ function handleTwitterSuccess(req: Request, res: Response, user: any) {
   if (finalSocketAuthId) {
     console.log(
       "📡 Emitting auth-success for socketAuthId:",
-      finalSocketAuthId
+      finalSocketAuthId,
     );
 
     const successData = {
@@ -1066,11 +1066,11 @@ function handleTwitterSuccess(req: Request, res: Response, user: any) {
       const emitted = socketManager.emitToSession(
         finalSocketAuthId,
         "auth-success",
-        successData
+        successData,
       );
       console.log(
         "Socket emission result:",
-        emitted ? "✅ Success" : "❌ Failed"
+        emitted ? "✅ Success" : "❌ Failed",
       );
     } catch (socketError) {
       console.error("❌ Socket emission error:", socketError);
@@ -1228,7 +1228,7 @@ function handleTwitterAuthFailure(
   req: Request,
   res: Response,
   error: string,
-  socketAuthId: string | null = null
+  socketAuthId: string | null = null,
 ) {
   if (socketAuthId) {
     socketManager.emitToSession(socketAuthId, "auth-error", {
@@ -1251,7 +1251,7 @@ function handleTwitterAuthFailure(
       socketNotified: !!socketAuthId,
       socketAuthId: socketAuthId,
     },
-    401
+    401,
   );
 }
 
@@ -1297,11 +1297,11 @@ router.get("/twitter/failure", (req: Request, res: Response) => {
       const emitted = socketManager.emitToSession(
         socketAuthId,
         "auth-error",
-        failureData
+        failureData,
       );
       console.log(
         "Socket emission result:",
-        emitted ? "✅ Success" : "❌ Failed"
+        emitted ? "✅ Success" : "❌ Failed",
       );
     } catch (socketError) {
       console.error("❌ Failed to emit auth-error via socket:", socketError);
@@ -1313,7 +1313,7 @@ router.get("/twitter/failure", (req: Request, res: Response) => {
   // For direct browser requests, redirect to failure page
   if (req.headers.accept?.includes("text/html")) {
     return res.redirect(
-      `/auth/error?error=${encodeURIComponent(error as string)}`
+      `/auth/error?error=${encodeURIComponent(error as string)}`,
     );
   }
 
@@ -1327,7 +1327,7 @@ router.get("/twitter/failure", (req: Request, res: Response) => {
       socketNotified: !!socketAuthId,
       socketAuthId: socketAuthId,
     },
-    401
+    401,
   );
 });
 
@@ -1351,7 +1351,7 @@ router.get("/twitter/debug/:socketAuthId", (req: Request, res: Response) => {
 // ***************************************************************************************************** //
 
 // Generic social OAuth success handler
-router.get("/success", (req: Request, res: Response) => {
+router.get("/success", ((req: Request, res: Response) => {
   if (!req.user) {
     return res.redirect("/api/v1/oauth/failure");
   }
@@ -1380,10 +1380,10 @@ router.get("/success", (req: Request, res: Response) => {
 
   // Render HTML success page for browser
   res.render("social-success.html", { user });
-});
+}) as RequestHandler);
 
 // Generic social OAuth failure handler
-router.get("/failure", (req: Request, res: Response) => {
+router.get("/failure", ((req: Request, res: Response) => {
   const error = req.query.error || "Authentication failed";
   const errorDescription =
     req.query.error_description || "Unknown error occurred";
@@ -1398,16 +1398,16 @@ router.get("/failure", (req: Request, res: Response) => {
         error,
         errorDescription,
       },
-      401
+      401,
     );
   }
 
   // Redirect to error page for browser
   res.redirect(
     `/auth/error?error=${encodeURIComponent(
-      error as string
-    )}&provider=${provider}`
+      error as string,
+    )}&provider=${provider}`,
   );
-});
+}) as RequestHandler);
 
 export default router;

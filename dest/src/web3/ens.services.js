@@ -1,9 +1,9 @@
 import { contract_config } from "../config/index.js";
-import { createPublicClient, http, createWalletClient, decodeErrorResult } from "viem";
+import { createPublicClient, http, createWalletClient, decodeErrorResult, } from "viem";
 import { AccountAbstractionService } from "./account-abstraction.js";
 import logger from "../utils/logger.js";
 import { privateKeyToAccount } from "viem/accounts";
-import { normalize, labelhash } from 'viem/ens';
+import { normalize, labelhash } from "viem/ens";
 import { ChainUtils } from "../config/chains.config.js";
 import { sepolia } from "viem/chains";
 class ENSL1SubnameRegistrarService {
@@ -29,7 +29,7 @@ class ENSL1SubnameRegistrarService {
         console.log(this.account);
         this.aaService = new AccountAbstractionService({
             privateKey,
-            chainId: this.chain.id
+            chainId: this.chain.id,
         });
         this.publicClient = createPublicClient({
             chain: sepolia,
@@ -38,7 +38,7 @@ class ENSL1SubnameRegistrarService {
         this.walletClient = createWalletClient({
             account: this.account,
             chain: sepolia,
-            transport: http()
+            transport: http(),
         });
     }
     // View functions
@@ -80,7 +80,7 @@ class ENSL1SubnameRegistrarService {
                 address: this.contractAddress,
                 abi: this.contractABI,
                 functionName,
-                args
+                args,
             });
         }
         catch (error) {
@@ -118,7 +118,7 @@ class ENSL1SubnameRegistrarService {
                 hash: txHash,
             });
             return {
-                status: 'success',
+                status: "success",
                 address: this.account.address,
                 hash: txHash,
                 receipt,
@@ -141,19 +141,19 @@ class ENSL1SubnameRegistrarService {
             try {
                 const decoded = decodeErrorResult({
                     abi: this.contractABI,
-                    data: error.data.data
+                    data: error.data.data,
                 });
-                return decoded.errorName || 'Unknown revert reason';
+                return decoded.errorName || "Unknown revert reason";
             }
             catch (e) {
-                return 'Could not decode revert reason';
+                return "Could not decode revert reason";
             }
         }
-        return error.message || 'Unknown error';
+        return error.message || "Unknown error";
     }
     formatError(error, functionName, args, additionalDetails = {}) {
         return {
-            status: 'error',
+            status: "error",
             error,
             details: {
                 functionName,
@@ -161,8 +161,8 @@ class ENSL1SubnameRegistrarService {
                 account: this.account.address,
                 contractAddress: this.contractAddress,
                 chainId: this.chain.id,
-                ...additionalDetails
-            }
+                ...additionalDetails,
+            },
         };
     }
     async aaWriteContract(functionName, args) {
@@ -170,10 +170,10 @@ class ENSL1SubnameRegistrarService {
             contractAddress: this.contractAddress,
             abi: this.contractABI,
             functionName,
-            args
+            args,
         }, "SPONSORED");
         return {
-            status: 'success',
+            status: "success",
             address: this.account.address,
             hash: response.transactionHash,
             receipt: response.receipt,

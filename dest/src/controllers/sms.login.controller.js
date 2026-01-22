@@ -1,7 +1,7 @@
 import { Wallet } from "../models/wallet.models.js";
 import WalletGenerationService from "../services/wallet.generate.services.js";
 import logger from "../utils/logger.js";
-import { generateOTP, expireOTP, generateJWT, verifyJWT } from "../utils/auth.js";
+import { generateOTP, expireOTP, generateJWT, verifyJWT, } from "../utils/auth.js";
 import crypto from "crypto";
 import { ApiError } from "../utils/apiError.js";
 import SmsService from "../services/sms.service.js";
@@ -23,15 +23,21 @@ class SmsLoginsController {
             if (!phoneNumber || !/^\+\d{10,15}$/.test(phoneNumber)) {
                 return res.status(400).json({
                     success: false,
-                    message: "Valid phone number in international format is required"
+                    message: "Valid phone number in international format is required",
                 });
             }
-            const existingWallet = await Wallet.findOne({ phoneNumber, socialType: "sms", appId: app.appId });
+            const existingWallet = await Wallet.findOne({
+                phoneNumber,
+                socialType: "sms",
+                appId: app.appId,
+            });
             // If token is provided and valid, check if it matches the wallet
             if (token) {
                 try {
                     const decoded = verifyJWT(token);
-                    if (existingWallet && existingWallet.address === decoded.walletAddress && existingWallet.isActive) {
+                    if (existingWallet &&
+                        existingWallet.address === decoded.walletAddress &&
+                        existingWallet.isActive) {
                         return res.status(200).json({
                             success: true,
                             message: "User already logged in",
@@ -63,7 +69,7 @@ class SmsLoginsController {
                     success: true,
                     message: "OTP sent to phone number for verification",
                     isActive: existingWallet.isActive,
-                    walletExists: true
+                    walletExists: true,
                 });
             }
             // Create wallet for new user
@@ -89,14 +95,14 @@ class SmsLoginsController {
                 success: true,
                 message: "OTP sent to phone number for verification",
                 isActive: false,
-                walletExists: false
+                walletExists: false,
             });
         }
         catch (error) {
             logger.error(`Error in smsWalletLogin: ${error}`);
             return res.status(500).json({
                 success: false,
-                message: "Internal server error"
+                message: "Internal server error",
             });
         }
     }
@@ -110,7 +116,11 @@ class SmsLoginsController {
             if (!phoneNumber || !/^\+\d{10,15}$/.test(phoneNumber)) {
                 throw new ApiError(400, "Valid phone number is required");
             }
-            const wallet = await Wallet.findOne({ phoneNumber, socialType: "sms", appId: app.appId });
+            const wallet = await Wallet.findOne({
+                phoneNumber,
+                socialType: "sms",
+                appId: app.appId,
+            });
             if (!wallet) {
                 throw new ApiError(404, "Wallet not found");
             }
@@ -145,7 +155,7 @@ class SmsLoginsController {
             }
             wallet.isActive = true;
             await wallet.save();
-            const newToken = generateJWT({ walletAddress: wallet.address });
+            const newToken = generateJWT({ address: wallet.address });
             return res.status(200).json({
                 success: true,
                 message: "Wallet verified successfully",
@@ -164,12 +174,12 @@ class SmsLoginsController {
             if (error instanceof ApiError) {
                 return res.status(error.statusCode).json({
                     success: false,
-                    message: error.message
+                    message: error.message,
                 });
             }
             return res.status(500).json({
                 success: false,
-                message: "Internal server error"
+                message: "Internal server error",
             });
         }
     }
@@ -180,7 +190,11 @@ class SmsLoginsController {
         try {
             const app = req.developer_app;
             const { phoneNumber } = req.body;
-            const wallet = await Wallet.findOne({ phoneNumber, socialType: "sms", appId: app.appId });
+            const wallet = await Wallet.findOne({
+                phoneNumber,
+                socialType: "sms",
+                appId: app.appId,
+            });
             if (!wallet) {
                 throw new ApiError(404, "Wallet not found");
             }
@@ -200,12 +214,12 @@ class SmsLoginsController {
             if (error instanceof ApiError) {
                 return res.status(error.statusCode).json({
                     success: false,
-                    message: error.message
+                    message: error.message,
                 });
             }
             return res.status(500).json({
                 success: false,
-                message: "Internal server error"
+                message: "Internal server error",
             });
         }
     }

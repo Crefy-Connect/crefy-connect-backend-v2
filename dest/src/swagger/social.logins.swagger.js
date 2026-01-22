@@ -6,7 +6,7 @@ export const socialLoginsSwagger = {
     info: {
         title: "Social Authentication API",
         version: "1.0.0",
-        description: "API documentation for social login and wallet authentication endpoints",
+        description: "API documentation for social login and wallet authentication endpoints supporting email, Google, and Twitter OAuth",
     },
     servers: [
         {
@@ -17,7 +17,7 @@ export const socialLoginsSwagger = {
     tags: [
         {
             name: "Social Authentication",
-            description: "Social login and wallet authentication endpoints supporting email and OAuth providers",
+            description: "Social login and wallet authentication endpoints supporting email, Google, and Twitter OAuth providers",
         },
     ],
     components: {
@@ -72,7 +72,7 @@ export const socialLoginsSwagger = {
                     },
                     socialType: {
                         type: "string",
-                        enum: ["email", "google", "facebook", "twitter"],
+                        enum: ["email", "google", "twitter"],
                         example: "email",
                         description: "Authentication method used",
                     },
@@ -80,6 +80,60 @@ export const socialLoginsSwagger = {
                         type: "string",
                         example: '{"email":"user@example.com","name":"John Doe"}',
                         description: "Stringified user data from social provider",
+                    },
+                    username: {
+                        type: "string",
+                        example: "johndoe",
+                        description: "Twitter username (only for Twitter OAuth)",
+                    },
+                    email: {
+                        type: "string",
+                        format: "email",
+                        example: "user@example.com",
+                        description: "User's email address",
+                    },
+                },
+            },
+            TwitterUserData: {
+                type: "object",
+                properties: {
+                    twitterId: {
+                        type: "string",
+                        example: "123456789",
+                        description: "Twitter user ID",
+                    },
+                    username: {
+                        type: "string",
+                        example: "johndoe",
+                        description: "Twitter username",
+                    },
+                    displayName: {
+                        type: "string",
+                        example: "John Doe",
+                        description: "Twitter display name",
+                    },
+                    email: {
+                        type: "string",
+                        format: "email",
+                        example: "user@example.com",
+                        description: "Twitter email (if available)",
+                    },
+                    photo: {
+                        type: "string",
+                        format: "uri",
+                        example: "https://pbs.twimg.com/profile_images/...",
+                        description: "Twitter profile picture URL",
+                    },
+                    profileUrl: {
+                        type: "string",
+                        format: "uri",
+                        example: "https://twitter.com/johndoe",
+                        description: "Twitter profile URL",
+                    },
+                    provider: {
+                        type: "string",
+                        example: "twitter",
+                        description: "Authentication provider",
                     },
                 },
             },
@@ -159,6 +213,10 @@ export const socialLoginsSwagger = {
                                     code: { type: "string" },
                                 },
                             },
+                            errorDescription: {
+                                type: "string",
+                                description: "Detailed error description",
+                            },
                         },
                     },
                 ],
@@ -184,13 +242,13 @@ export const socialLoginsSwagger = {
             post: {
                 summary: "Initiate email authentication",
                 description: `
-                    Initiates email-based authentication flow. Requires x-api-key header.
-                    The endpoint handles three scenarios:
-                    
-                    1. **Valid JWT Token**: If a valid JWT token is provided and matches an active wallet, returns wallet details immediately
-                    2. **Existing Wallet**: If wallet exists but no valid token, sends OTP for verification
-                    3. **New User**: Creates new wallet and sends OTP for initial verification
-                `,
+                      Initiates email-based authentication flow. Requires x-api-key header.
+                      The endpoint handles three scenarios:
+                      
+                      1. **Valid JWT Token**: If a valid JWT token is provided and matches an active wallet, returns wallet details immediately
+                      2. **Existing Wallet**: If wallet exists but no valid token, sends OTP for verification
+                      3. **New User**: Creates new wallet and sends OTP for initial verification
+                  `,
                 tags: ["Social Authentication"],
                 security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
                 requestBody: {
@@ -296,9 +354,9 @@ export const socialLoginsSwagger = {
             post: {
                 summary: "Verify wallet with OTP",
                 description: `
-                    Verifies the OTP sent to email and activates the wallet. 
-                    Requires x-api-key header.
-                `,
+                      Verifies the OTP sent to email and activates the wallet. 
+                      Requires x-api-key header.
+                  `,
                 tags: ["Social Authentication"],
                 security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
                 requestBody: {
@@ -385,9 +443,9 @@ export const socialLoginsSwagger = {
             post: {
                 summary: "Resend email OTP",
                 description: `
-                    Resends the OTP to the specified email address. 
-                    Requires x-api-key header.
-                `,
+                      Resends the OTP to the specified email address. 
+                      Requires x-api-key header.
+                  `,
                 tags: ["Social Authentication"],
                 security: [{ ApiKeyAuth: [] }],
                 requestBody: {
@@ -444,13 +502,13 @@ export const socialLoginsSwagger = {
                 },
             },
         },
-        "/oauth/google/:appId/initiate-google-auth": {
+        "/oauth/google/{appId}/initiate-google-auth": {
             get: {
                 summary: "Initiate Google OAuth flow",
                 description: `
-                    Redirects the user to Google's OAuth consent screen.
-                    Requires appId as a path parameter.
-                `,
+                      Redirects the user to Google's OAuth consent screen.
+                      Requires appId as a path parameter.
+                  `,
                 tags: ["Social Authentication"],
                 parameters: [
                     {
@@ -459,6 +517,13 @@ export const socialLoginsSwagger = {
                         required: true,
                         schema: { type: "string" },
                         description: "Unique application ID for identifying the client app",
+                    },
+                    {
+                        in: "query",
+                        name: "socketAuthId",
+                        required: false,
+                        schema: { type: "string" },
+                        description: "Socket authentication ID for real-time communication",
                     },
                 ],
                 responses: {
@@ -498,9 +563,9 @@ export const socialLoginsSwagger = {
             get: {
                 summary: "Google OAuth callback endpoint",
                 description: `
-                    Handles the callback from Google OAuth flow. 
-                    This endpoint is called automatically by Google.
-                `,
+                      Handles the callback from Google OAuth flow. 
+                      This endpoint is called automatically by Google.
+                  `,
                 tags: ["Social Authentication"],
                 parameters: [
                     {
@@ -513,7 +578,7 @@ export const socialLoginsSwagger = {
                         in: "query",
                         name: "state",
                         schema: { type: "string" },
-                        description: "State parameter for security",
+                        description: "State parameter for security verification",
                     },
                 ],
                 responses: {
@@ -541,6 +606,10 @@ export const socialLoginsSwagger = {
                                     },
                                 },
                             },
+                            "text/html": {
+                                schema: { type: "string" },
+                                description: "HTML success page for browser-based authentication",
+                            },
                         },
                     },
                     "401": {
@@ -558,6 +627,286 @@ export const socialLoginsSwagger = {
                                         },
                                     },
                                 },
+                            },
+                        },
+                    },
+                    "500": {
+                        description: "Internal server error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "/oauth/twitter/{appId}/initiate-twitter-auth": {
+            get: {
+                summary: "Initiate Twitter OAuth flow",
+                description: `
+                      Redirects the user to Twitter's OAuth consent screen.
+                      Requires appId as a path parameter.
+                      Uses OAuth 1.0a authentication flow.
+                  `,
+                tags: ["Social Authentication"],
+                parameters: [
+                    {
+                        in: "path",
+                        name: "appId",
+                        required: true,
+                        schema: { type: "string" },
+                        description: "Unique application ID for identifying the client app",
+                    },
+                    {
+                        in: "query",
+                        name: "socketAuthId",
+                        required: false,
+                        schema: { type: "string" },
+                        description: "Socket authentication ID for real-time communication",
+                    },
+                ],
+                responses: {
+                    "302": {
+                        description: "Redirect to Twitter OAuth consent screen",
+                        headers: {
+                            Location: {
+                                description: "Twitter OAuth authorization URL",
+                                schema: {
+                                    type: "string",
+                                    format: "uri",
+                                    example: "https://api.twitter.com/oauth/authenticate?oauth_token=...",
+                                },
+                            },
+                        },
+                    },
+                    "400": {
+                        description: "Invalid app ID or configuration error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                            },
+                        },
+                    },
+                    "500": {
+                        description: "Internal server error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "/oauth/twitter/callback": {
+            get: {
+                summary: "Twitter OAuth callback endpoint",
+                description: `
+                      Handles the callback from Twitter OAuth flow. 
+                      This endpoint is called automatically by Twitter.
+                      Uses OAuth 1.0a authentication flow.
+                  `,
+                tags: ["Social Authentication"],
+                parameters: [
+                    {
+                        in: "query",
+                        name: "oauth_token",
+                        schema: { type: "string" },
+                        description: "OAuth token from Twitter",
+                    },
+                    {
+                        in: "query",
+                        name: "oauth_verifier",
+                        schema: { type: "string" },
+                        description: "OAuth verifier from Twitter",
+                    },
+                    {
+                        in: "query",
+                        name: "state",
+                        schema: { type: "string" },
+                        description: "State parameter for security verification",
+                    },
+                ],
+                responses: {
+                    "200": {
+                        description: "Twitter authentication successful",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/LoginSuccessResponse" },
+                                examples: {
+                                    success: {
+                                        summary: "Twitter authentication successful",
+                                        value: {
+                                            success: true,
+                                            message: "Twitter Wallet Authentication successful",
+                                            data: {
+                                                walletAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                publicKey: "0x04a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd",
+                                                socialType: "twitter",
+                                                userData: '{"twitterId":"123456789","username":"johndoe","displayName":"John Doe","email":"user@example.com","photo":"https://pbs.twimg.com/profile_images/...","profileUrl":"https://twitter.com/johndoe"}',
+                                                username: "johndoe",
+                                                email: "user@example.com",
+                                            },
+                                            isActive: true,
+                                            token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                                            timestamp: "2024-01-15T10:30:00.000Z",
+                                        },
+                                    },
+                                },
+                            },
+                            "text/html": {
+                                schema: { type: "string" },
+                                description: "HTML success page for browser-based authentication",
+                            },
+                        },
+                    },
+                    "401": {
+                        description: "Authentication failed or user denied access",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    authFailed: {
+                                        summary: "Authentication failed",
+                                        value: {
+                                            success: false,
+                                            message: "Twitter OAuth failed",
+                                            timestamp: "2024-01-15T10:30:00.000Z",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "500": {
+                        description: "Internal server error",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "/oauth/twitter/failure": {
+            get: {
+                summary: "Twitter OAuth failure endpoint",
+                description: `
+                      Handles Twitter OAuth authentication failures.
+                      Returns detailed error information.
+                  `,
+                tags: ["Social Authentication"],
+                parameters: [
+                    {
+                        in: "query",
+                        name: "error",
+                        schema: { type: "string" },
+                        description: "Error code from Twitter OAuth",
+                    },
+                    {
+                        in: "query",
+                        name: "error_description",
+                        schema: { type: "string" },
+                        description: "Detailed error description from Twitter OAuth",
+                    },
+                ],
+                responses: {
+                    "401": {
+                        description: "Twitter OAuth authentication failed",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
+                                examples: {
+                                    denied: {
+                                        summary: "User denied authorization",
+                                        value: {
+                                            success: false,
+                                            message: "Twitter OAuth failed",
+                                            error: "access_denied",
+                                            errorDescription: "User denied access to Twitter account",
+                                            timestamp: "2024-01-15T10:30:00.000Z",
+                                        },
+                                    },
+                                    invalidToken: {
+                                        summary: "Invalid OAuth token",
+                                        value: {
+                                            success: false,
+                                            message: "Twitter OAuth failed",
+                                            error: "invalid_token",
+                                            errorDescription: "Invalid OAuth token provided",
+                                            timestamp: "2024-01-15T10:30:00.000Z",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "/oauth/social/user-info": {
+            get: {
+                summary: "Get social login user information",
+                description: `
+                      Retrieves authenticated user information for social login users.
+                      Requires valid JWT token in Authorization header.
+                  `,
+                tags: ["Social Authentication"],
+                security: [{ BearerAuth: [] }],
+                responses: {
+                    "200": {
+                        description: "User information retrieved successfully",
+                        content: {
+                            "application/json": {
+                                schema: {
+                                    type: "object",
+                                    properties: {
+                                        success: { type: "boolean", example: true },
+                                        data: { $ref: "#/components/schemas/WalletData" },
+                                        timestamp: { type: "string", format: "date-time" },
+                                    },
+                                },
+                                examples: {
+                                    twitterUser: {
+                                        summary: "Twitter user information",
+                                        value: {
+                                            success: true,
+                                            data: {
+                                                walletAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                publicKey: "0x04a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd",
+                                                socialType: "twitter",
+                                                userData: '{"twitterId":"123456789","username":"johndoe","displayName":"John Doe"}',
+                                                username: "johndoe",
+                                                email: "user@example.com",
+                                            },
+                                            timestamp: "2024-01-15T10:30:00.000Z",
+                                        },
+                                    },
+                                    googleUser: {
+                                        summary: "Google user information",
+                                        value: {
+                                            success: true,
+                                            data: {
+                                                walletAddress: "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
+                                                publicKey: "0x04a34b99f22c790c4e36b2b3c2c35a36db06226e41c692fc82b8b56ac1c540c5bd",
+                                                socialType: "google",
+                                                userData: '{"email":"user@gmail.com","name":"John Doe","picture":"https://..."}',
+                                                email: "user@gmail.com",
+                                            },
+                                            timestamp: "2024-01-15T10:30:00.000Z",
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    "401": {
+                        description: "Unauthorized - invalid or missing JWT token",
+                        content: {
+                            "application/json": {
+                                schema: { $ref: "#/components/schemas/ErrorResponse" },
                             },
                         },
                     },

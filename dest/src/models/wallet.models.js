@@ -13,8 +13,8 @@ const WalletSchema = new Schema({
                 }
                 return true;
             },
-            message: 'Either email or phoneNumber must be provided'
-        }
+            message: "Either email or phoneNumber must be provided",
+        },
     },
     phoneNumber: {
         type: String,
@@ -28,8 +28,8 @@ const WalletSchema = new Schema({
                 }
                 return true;
             },
-            message: 'Either email or phoneNumber must be provided'
-        }
+            message: "Either email or phoneNumber must be provided",
+        },
     },
     subname: { type: String, required: false },
     socialType: { type: String, required: true },
@@ -45,7 +45,7 @@ const WalletSchema = new Schema({
     updatedAt: { type: Date, default: Date.now },
     oauthTokens: {
         accessToken: { type: String },
-        refreshToken: { type: String }
+        refreshToken: { type: String },
     },
 });
 // Updated index to include phoneNumber
@@ -56,17 +56,17 @@ WalletSchema.index({ appId: 1, address: 1 }, { unique: true });
 WalletSchema.index({ appId: 1, email: 1 }, {
     unique: true,
     partialFilterExpression: {
-        email: { $exists: true, $ne: null }
-    }
+        email: { $exists: true, $ne: null },
+    },
 });
 // PhoneNumber index - only applies when phoneNumber exists
 WalletSchema.index({ appId: 1, phoneNumber: 1 }, {
     unique: true,
     partialFilterExpression: {
-        phoneNumber: { $exists: true, $ne: null }
-    }
+        phoneNumber: { $exists: true, $ne: null },
+    },
 });
-WalletSchema.pre('save', function (next) {
+WalletSchema.pre("save", function (next) {
     this.updatedAt = new Date();
     if (!this.email) {
         this.email = undefined;
@@ -76,4 +76,4 @@ WalletSchema.pre('save', function (next) {
     }
     next();
 });
-export const Wallet = model('Wallet', WalletSchema);
+export const Wallet = model("Wallet", WalletSchema);
